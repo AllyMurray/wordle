@@ -1,0 +1,130 @@
+.lobby {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #121213;
+  padding: 20px;
+}
+
+.lobby-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.lobby-title {
+  font-size: 3rem;
+  font-weight: bold;
+  letter-spacing: 0.3rem;
+  text-transform: uppercase;
+  color: white;
+  margin: 0;
+}
+
+.lobby-subtitle {
+  color: #818384;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.lobby-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.lobby-btn {
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.1rem;
+}
+
+.lobby-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.lobby-btn:active {
+  transform: scale(0.98);
+}
+
+.lobby-btn.primary {
+  background-color: #538d4e;
+  color: white;
+}
+
+.lobby-btn.host {
+  background-color: #b59f3b;
+  color: white;
+}
+
+.lobby-btn.join {
+  background-color: #3a3a3c;
+  color: white;
+}
+
+.lobby-btn.join-confirm {
+  background-color: #538d4e;
+  color: white;
+  flex: 1;
+}
+
+.lobby-btn.join-confirm:disabled {
+  background-color: #3a3a3c;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lobby-btn.cancel {
+  background-color: #3a3a3c;
+  color: white;
+}
+
+.join-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.join-input {
+  padding: 16px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 0.5rem;
+  border: 2px solid #3a3a3c;
+  border-radius: 4px;
+  background-color: #121213;
+  color: white;
+  text-transform: uppercase;
+}
+
+.join-input::placeholder {
+  font-size: 1rem;
+  letter-spacing: 0.05rem;
+  color: #818384;
+}
+
+.join-input:focus {
+  outline: none;
+  border-color: #538d4e;
+}
+
+.join-actions {
+  display: flex;
+  gap: 12px;
+}
