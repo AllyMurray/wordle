@@ -10,6 +10,14 @@
   padding: 10px;
 }
 
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
 .header h1 {
   margin: 0;
   font-size: 2.2rem;
@@ -18,6 +26,27 @@
   text-transform: uppercase;
   text-align: center;
   color: white;
+  flex: 1;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  color: #818384;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background-color: #3a3a3c;
+  color: white;
+}
+
+.header-spacer {
+  width: 70px;
 }
 
 .main {
@@ -82,4 +111,62 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+}
+
+/* Connection status styles */
+.connection-status {
+  background-color: #1a1a1b;
+  border-bottom: 1px solid #3a3a3c;
+  padding: 10px 20px;
+}
+
+.session-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.session-label {
+  color: #818384;
+  font-size: 0.9rem;
+}
+
+.session-code {
+  background-color: #3a3a3c;
+  color: #b59f3b;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 1.1rem;
+  font-weight: bold;
+  letter-spacing: 0.2rem;
+}
+
+.viewer-label {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.partner-status {
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.partner-status.connected {
+  background-color: rgba(83, 141, 78, 0.2);
+  color: #538d4e;
+}
+
+.partner-status.waiting {
+  background-color: rgba(181, 159, 59, 0.2);
+  color: #b59f3b;
+}
+
+.partner-status.error {
+  background-color: rgba(255, 100, 100, 0.2);
+  color: #ff6464;
 }

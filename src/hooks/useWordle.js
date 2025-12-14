@@ -1,10 +1,12 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { getRandomWord, WORDS } from '../data/words';
 
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
 
-export const useWordle = () => {
+export const useWordle = (options = {}) => {
+  const { isViewer = false, onStateChange } = options;
+
   const [solution, setSolution] = useState(() => getRandomWord());
   const [guesses, setGuesses] = useState([]);
   const [currentGuess, setCurrentGuess] = useState('');
@@ -12,6 +14,9 @@ export const useWordle = () => {
   const [won, setWon] = useState(false);
   const [shake, setShake] = useState(false);
   const [message, setMessage] = useState('');
+
+  const onStateChangeRef = useRef(onStateChange);
+  onStateChangeRef.current = onStateChange;
 
   // Check if a word is valid (in word list)
   const isValidWord = useCallback((word) => {
@@ -46,9 +51,37 @@ export const useWordle = () => {
     return result;
   }, []);
 
+  // Get full game state for syncing
+  const getGameState = useCallback(() => ({
+    solution,
+    guesses,
+    currentGuess,
+    gameOver,
+    won,
+    message,
+  }), [solution, guesses, currentGuess, gameOver, won, message]);
+
+  // Set game state from external source (for viewer)
+  const setGameState = useCallback((state) => {
+    if (state.solution !== undefined) setSolution(state.solution);
+    if (state.guesses !== undefined) setGuesses(state.guesses);
+    if (state.currentGuess !== undefined) setCurrentGuess(state.currentGuess);
+    if (state.gameOver !== undefined) setGameOver(state.gameOver);
+    if (state.won !== undefined) setWon(state.won);
+    if (state.message !== undefined) setMessage(state.message);
+  }, []);
+
+  // Notify state changes (for host to sync with viewer)
+  useEffect(() => {
+    if (onStateChangeRef.current && !isViewer) {
+      onStateChangeRef.current(getGameState());
+    }
+  }, [solution, guesses, currentGuess, gameOver, won, message, isViewer, getGameState]);
+
   // Handle keyboard input
   const handleKeyPress = useCallback((key) => {
     if (gameOver) return;
+    if (isViewer) return; // Viewers cannot make guesses
 
     if (key === 'ENTER') {
       if (currentGuess.length !== WORD_LENGTH) {
@@ -90,7 +123,7 @@ export const useWordle = () => {
     } else if (currentGuess.length < WORD_LENGTH && /^[A-Z]$/.test(key)) {
       setCurrentGuess(prev => prev + key);
     }
-  }, [currentGuess, gameOver, guesses, solution, isValidWord, getLetterStatus]);
+  }, [currentGuess, gameOver, guesses, solution, isValidWord, getLetterStatus, isViewer]);
 
   // Get keyboard letter statuses for coloring
   const getKeyboardStatus = useCallback(() => {
@@ -136,6 +169,8 @@ export const useWordle = () => {
     handleKeyPress,
     getKeyboardStatus,
     newGame,
+    getGameState,
+    setGameState,
     maxGuesses: MAX_GUESSES,
     wordLength: WORD_LENGTH
   };

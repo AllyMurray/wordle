@@ -6,13 +6,14 @@ const KEYBOARD_ROWS = [
   ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACKSPACE']
 ];
 
-const Keyboard = ({ onKeyPress, keyboardStatus }) => {
+const Keyboard = ({ onKeyPress, keyboardStatus, disabled = false }) => {
   const handleClick = (key) => {
+    if (disabled) return;
     onKeyPress(key);
   };
 
   return (
-    <div className="keyboard">
+    <div className={`keyboard ${disabled ? 'disabled' : ''}`}>
       {KEYBOARD_ROWS.map((row, rowIndex) => (
         <div key={rowIndex} className="keyboard-row">
           {row.map((key) => {
@@ -24,6 +25,7 @@ const Keyboard = ({ onKeyPress, keyboardStatus }) => {
                 key={key}
                 className={`key ${status} ${isWide ? 'wide' : ''}`}
                 onClick={() => handleClick(key)}
+                disabled={disabled}
               >
                 {key === 'BACKSPACE' ? '⌫' : key}
               </button>

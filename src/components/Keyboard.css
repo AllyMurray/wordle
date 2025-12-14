@@ -58,6 +58,15 @@
   background-color: #3a3a3c;
 }
 
+.keyboard.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.keyboard.disabled .key {
+  cursor: not-allowed;
+}
+
 @media (max-width: 500px) {
   .key {
     height: 50px;
