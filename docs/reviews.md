@@ -486,8 +486,10 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
 
    **Resolution:** Created `ViewerGameState` type that excludes the solution field. The `sendGameState` function in `useMultiplayer.ts` now strips the solution before sending to viewers, preventing cheating by inspecting network traffic. Updated Zod validation schema to reflect the new structure.
 
-7. **Add Error Boundaries**
-   - Wrap the app in React error boundaries for graceful failure handling
+7. ~~**Add Error Boundaries**~~ ✅ **RESOLVED**
+   - ~~Wrap the app in React error boundaries for graceful failure handling~~
+
+   **Resolution:** Created `ErrorBoundary` class component (`src/components/ErrorBoundary.tsx`) that catches JavaScript errors in the component tree and displays a user-friendly fallback UI with "Reload Page" and "Try Again" options. The App component is wrapped with ErrorBoundary in `main.tsx`.
 
 8. **Improve Network Resilience**
    - Add retry logic for temporary connection failures

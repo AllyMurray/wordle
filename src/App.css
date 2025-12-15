@@ -251,3 +251,94 @@
 .suggestion-btn:active {
   transform: scale(0.95);
 }
+
+/* Error Boundary styles */
+.error-boundary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #121213;
+  padding: 20px;
+}
+
+.error-content {
+  text-align: center;
+  max-width: 500px;
+}
+
+.error-content h1 {
+  color: white;
+  font-size: 2rem;
+  margin-bottom: 16px;
+}
+
+.error-message {
+  color: #818384;
+  font-size: 1.1rem;
+  margin-bottom: 24px;
+}
+
+.error-details {
+  background-color: #1a1a1b;
+  border: 1px solid #3a3a3c;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.error-details summary {
+  color: #818384;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.error-details pre {
+  color: #ff6464;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 8px 0 0 0;
+}
+
+.error-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.error-btn {
+  padding: 14px 28px;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.error-btn.primary {
+  background-color: #538d4e;
+  color: white;
+}
+
+.error-btn.primary:hover {
+  background-color: #4a7c44;
+}
+
+.error-btn.secondary {
+  background-color: #3a3a3c;
+  color: #818384;
+}
+
+.error-btn.secondary:hover {
+  background-color: #4a4a4c;
+  color: white;
+}
+
+.error-btn:active {
+  transform: scale(0.98);
+}
