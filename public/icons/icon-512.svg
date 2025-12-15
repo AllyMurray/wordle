@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#121213"/>
+  <g transform="translate(36, 36)">
+    <!-- Row 1 -->
+    <rect x="0" y="0" width="82" height="82" fill="#538d4e" rx="4"/>
+    <rect x="88" y="0" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <rect x="176" y="0" width="82" height="82" fill="#b59f3b" rx="4"/>
+    <rect x="264" y="0" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <rect x="352" y="0" width="82" height="82" fill="#538d4e" rx="4"/>
+    <!-- Row 2 -->
+    <rect x="0" y="88" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <rect x="88" y="88" width="82" height="82" fill="#538d4e" rx="4"/>
+    <rect x="176" y="88" width="82" height="82" fill="#538d4e" rx="4"/>
+    <rect x="264" y="88" width="82" height="82" fill="#b59f3b" rx="4"/>
+    <rect x="352" y="88" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <!-- Row 3 -->
+    <rect x="0" y="176" width="82" height="82" fill="#b59f3b" rx="4"/>
+    <rect x="88" y="176" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <rect x="176" y="176" width="82" height="82" fill="#538d4e" rx="4"/>
+    <rect x="264" y="176" width="82" height="82" fill="#538d4e" rx="4"/>
+    <rect x="352" y="176" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <!-- Row 4 (winning row - all green) -->
+    <rect x="0" y="264" width="82" height="82" fill="#538d4e" rx="4"/>
+    <rect x="88" y="264" width="82" height="82" fill="#538d4e" rx="4"/>
+    <rect x="176" y="264" width="82" height="82" fill="#538d4e" rx="4"/>
+    <rect x="264" y="264" width="82" height="82" fill="#538d4e" rx="4"/>
+    <rect x="352" y="264" width="82" height="82" fill="#538d4e" rx="4"/>
+    <!-- Row 5 (empty) -->
+    <rect x="0" y="352" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <rect x="88" y="352" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <rect x="176" y="352" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <rect x="264" y="352" width="82" height="82" fill="#3a3a3c" rx="4"/>
+    <rect x="352" y="352" width="82" height="82" fill="#3a3a3c" rx="4"/>
+  </g>
+</svg>

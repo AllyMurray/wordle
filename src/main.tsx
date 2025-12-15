@@ -4,6 +4,7 @@ import './index.css'
 import App from './App'
 import ErrorBoundary from './components/ErrorBoundary'
 import { GameProvider } from './contexts/GameContext'
+import { registerServiceWorker } from './registerServiceWorker'
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -19,3 +20,6 @@ createRoot(rootElement).render(
     </ErrorBoundary>
   </StrictMode>,
 )
+
+// Register service worker for offline functionality
+registerServiceWorker()

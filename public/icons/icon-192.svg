@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" fill="#121213"/>
+  <g transform="translate(16, 16)">
+    <!-- Row 1 -->
+    <rect x="0" y="0" width="30" height="30" fill="#538d4e" rx="2"/>
+    <rect x="34" y="0" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <rect x="68" y="0" width="30" height="30" fill="#b59f3b" rx="2"/>
+    <rect x="102" y="0" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <rect x="136" y="0" width="30" height="30" fill="#538d4e" rx="2"/>
+    <!-- Row 2 -->
+    <rect x="0" y="34" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <rect x="34" y="34" width="30" height="30" fill="#538d4e" rx="2"/>
+    <rect x="68" y="34" width="30" height="30" fill="#538d4e" rx="2"/>
+    <rect x="102" y="34" width="30" height="30" fill="#b59f3b" rx="2"/>
+    <rect x="136" y="34" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <!-- Row 3 -->
+    <rect x="0" y="68" width="30" height="30" fill="#b59f3b" rx="2"/>
+    <rect x="34" y="68" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <rect x="68" y="68" width="30" height="30" fill="#538d4e" rx="2"/>
+    <rect x="102" y="68" width="30" height="30" fill="#538d4e" rx="2"/>
+    <rect x="136" y="68" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <!-- Row 4 -->
+    <rect x="0" y="102" width="30" height="30" fill="#538d4e" rx="2"/>
+    <rect x="34" y="102" width="30" height="30" fill="#538d4e" rx="2"/>
+    <rect x="68" y="102" width="30" height="30" fill="#538d4e" rx="2"/>
+    <rect x="102" y="102" width="30" height="30" fill="#538d4e" rx="2"/>
+    <rect x="136" y="102" width="30" height="30" fill="#538d4e" rx="2"/>
+    <!-- Row 5 (empty) -->
+    <rect x="0" y="136" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <rect x="34" y="136" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <rect x="68" y="136" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <rect x="102" y="136" width="30" height="30" fill="#3a3a3c" rx="2"/>
+    <rect x="136" y="136" width="30" height="30" fill="#3a3a3c" rx="2"/>
+  </g>
+</svg>

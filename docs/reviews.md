@@ -531,9 +531,21 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
     - Track game completions, win rates, and multiplayer usage
     - Use privacy-respecting analytics
 
-12. **Progressive Web App**
-    - Add service worker for offline solo play
-    - Add manifest for installability
+12. ~~**Progressive Web App**~~ ✅ **RESOLVED**
+    - ~~Add service worker for offline solo play~~
+    - ~~Add manifest for installability~~
+
+    **Resolution:** Implemented full PWA functionality:
+    - Created `manifest.json` with app metadata, theme colors, and icons for installability
+    - Created custom SVG icons (192x192, 512x512, and maskable) styled as Wordle game boards
+    - Created `sw.js` service worker with:
+      - Cache-first strategy for static assets (JS, CSS, images)
+      - Network-first strategy for HTML to ensure updates
+      - Automatic cache cleanup for old versions
+      - Exclusion of WebRTC/PeerJS requests (multiplayer requires network)
+    - Created `registerServiceWorker.ts` module for service worker registration with update detection
+    - Added PWA meta tags to `index.html` including Apple-specific tags for iOS support
+    - Users can now install the app and play solo mode offline
 
 ---
 
