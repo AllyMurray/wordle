@@ -1,14 +1,22 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { getRandomWord, WORDS } from '../data/words';
+import type {
+  Guess,
+  LetterStatus,
+  GameState,
+  KeyboardStatus,
+  UseWordleOptions,
+  UseWordleReturn,
+} from '../types';
 
 const WORD_LENGTH = 5;
 const MAX_GUESSES = 6;
 
-export const useWordle = (options = {}) => {
+export const useWordle = (options: UseWordleOptions = {}): UseWordleReturn => {
   const { isViewer = false, onStateChange, onViewerGuessChange } = options;
 
   const [solution, setSolution] = useState(() => getRandomWord());
-  const [guesses, setGuesses] = useState([]);
+  const [guesses, setGuesses] = useState<Guess[]>([]);
   const [currentGuess, setCurrentGuess] = useState('');
   const [viewerGuess, setViewerGuess] = useState(''); // Viewer's local suggestion
   const [gameOver, setGameOver] = useState(false);
@@ -29,14 +37,14 @@ export const useWordle = (options = {}) => {
   }, [onViewerGuessChange]);
 
   // Check if a word is valid (in word list)
-  const isValidWord = useCallback((word) => {
+  const isValidWord = useCallback((word: string): boolean => {
     return WORDS.includes(word.toLowerCase());
   }, []);
 
   // Get letter status for coloring tiles
-  const getLetterStatus = useCallback((guess, solution) => {
-    const result = Array(WORD_LENGTH).fill('absent');
-    const solutionArray = solution.split('');
+  const getLetterStatus = useCallback((guess: string, solutionWord: string): LetterStatus[] => {
+    const result: LetterStatus[] = Array(WORD_LENGTH).fill('absent') as LetterStatus[];
+    const solutionArray: (string | null)[] = solutionWord.split('');
     const guessArray = guess.split('');
 
     // First pass: mark correct letters (green)
@@ -62,7 +70,7 @@ export const useWordle = (options = {}) => {
   }, []);
 
   // Get full game state for syncing
-  const getGameState = useCallback(() => ({
+  const getGameState = useCallback((): GameState => ({
     solution,
     guesses,
     currentGuess,
@@ -72,7 +80,7 @@ export const useWordle = (options = {}) => {
   }), [solution, guesses, currentGuess, gameOver, won, message]);
 
   // Set game state from external source (for viewer)
-  const setGameState = useCallback((state) => {
+  const setGameState = useCallback((state: Partial<GameState>): void => {
     if (state.solution !== undefined) setSolution(state.solution);
     if (state.guesses !== undefined) setGuesses(state.guesses);
     if (state.currentGuess !== undefined) setCurrentGuess(state.currentGuess);
@@ -89,13 +97,13 @@ export const useWordle = (options = {}) => {
   }, [solution, guesses, currentGuess, gameOver, won, message, isViewer, getGameState]);
 
   // Handle keyboard input
-  const handleKeyPress = useCallback((key) => {
+  const handleKeyPress = useCallback((key: string): void | 'submit-suggestion' => {
     if (gameOver) return;
 
     // Viewer typing for suggestions
     if (isViewer) {
       if (key === 'ENTER') {
-        // Viewer presses enter to submit suggestion (handled by App.jsx)
+        // Viewer presses enter to submit suggestion (handled by App.tsx)
         return 'submit-suggestion';
       } else if (key === 'BACKSPACE') {
         setViewerGuess(prev => prev.slice(0, -1));
@@ -128,7 +136,7 @@ export const useWordle = (options = {}) => {
       }
 
       const letterStatus = getLetterStatus(currentGuess, solution);
-      const newGuess = { word: currentGuess, status: letterStatus };
+      const newGuess: Guess = { word: currentGuess, status: letterStatus };
       const newGuesses = [...guesses, newGuess];
       setGuesses(newGuesses);
       setCurrentGuess('');
@@ -149,8 +157,8 @@ export const useWordle = (options = {}) => {
   }, [currentGuess, viewerGuess, gameOver, guesses, solution, isValidWord, getLetterStatus, isViewer]);
 
   // Get keyboard letter statuses for coloring
-  const getKeyboardStatus = useCallback(() => {
-    const status = {};
+  const getKeyboardStatus = useCallback((): KeyboardStatus => {
+    const status: KeyboardStatus = {};
 
     guesses.forEach(guess => {
       guess.word.split('').forEach((letter, i) => {
@@ -172,13 +180,13 @@ export const useWordle = (options = {}) => {
   }, [guesses]);
 
   // Submit a specific word (used by host to accept viewer suggestions)
-  const submitWord = useCallback((word) => {
+  const submitWord = useCallback((word: string): boolean => {
     if (gameOver || isViewer) return false;
     if (word.length !== WORD_LENGTH) return false;
     if (!isValidWord(word)) return false;
 
     const letterStatus = getLetterStatus(word, solution);
-    const newGuess = { word, status: letterStatus };
+    const newGuess: Guess = { word, status: letterStatus };
     const newGuesses = [...guesses, newGuess];
     setGuesses(newGuesses);
     setCurrentGuess('');
@@ -195,7 +203,7 @@ export const useWordle = (options = {}) => {
   }, [gameOver, guesses, solution, isValidWord, getLetterStatus, isViewer]);
 
   // Clear viewer guess (when suggestion is accepted/rejected or game state changes)
-  const clearViewerGuess = useCallback(() => {
+  const clearViewerGuess = useCallback((): void => {
     setViewerGuess('');
   }, []);
 
@@ -207,7 +215,7 @@ export const useWordle = (options = {}) => {
   }, [viewerGuess, isViewer]);
 
   // Start a new game
-  const newGame = useCallback(() => {
+  const newGame = useCallback((): void => {
     setSolution(getRandomWord());
     setGuesses([]);
     setCurrentGuess('');

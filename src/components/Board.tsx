@@ -1,7 +1,16 @@
 import Row from './Row';
+import type { Guess } from '../types';
 import './Board.css';
 
-const Board = ({ guesses, currentGuess, maxGuesses, wordLength, shake }) => {
+interface BoardProps {
+  guesses: Guess[];
+  currentGuess: string;
+  maxGuesses: number;
+  wordLength: number;
+  shake: boolean;
+}
+
+const Board = ({ guesses, currentGuess, maxGuesses, wordLength, shake }: BoardProps) => {
   return (
     <div className="board">
       {Array(maxGuesses)

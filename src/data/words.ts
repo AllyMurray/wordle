@@ -1,5 +1,5 @@
 // Common 5-letter words for Wordle
-export const WORDS = [
+export const WORDS: readonly string[] = [
   'about', 'above', 'abuse', 'actor', 'acute', 'admit', 'adopt', 'adult', 'after', 'again',
   'agent', 'agree', 'ahead', 'alarm', 'album', 'alert', 'alien', 'align', 'alike', 'alive',
   'allow', 'alone', 'along', 'alter', 'among', 'angel', 'anger', 'angle', 'angry', 'apart',
@@ -87,6 +87,11 @@ export const WORDS = [
 ].filter(word => word.length === 5);
 
 // Get a random word from the list
-export const getRandomWord = () => {
-  return WORDS[Math.floor(Math.random() * WORDS.length)].toUpperCase();
+export const getRandomWord = (): string => {
+  const randomIndex = Math.floor(Math.random() * WORDS.length);
+  const word = WORDS[randomIndex];
+  if (word === undefined) {
+    throw new Error('Word list is empty');
+  }
+  return word.toUpperCase();
 };
