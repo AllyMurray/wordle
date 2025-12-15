@@ -334,15 +334,18 @@ setJoinCode(e.target.value.toUpperCase().slice(0, 6));
 
 #### Concerns:
 
-1. **Solution Exposure in Multiplayer**
-   The game solution is sent to viewers in the game state:
+1. ~~**Solution Exposure in Multiplayer**~~ ✅ **RESOLVED**
+   ~~The game solution is sent to viewers in the game state:~~
    ```typescript
+   // Previously:
    export interface GameState {
      solution: string; // Visible to viewer!
      // ...
    }
    ```
-   A technically savvy viewer could inspect network traffic to see the answer.
+   ~~A technically savvy viewer could inspect network traffic to see the answer.~~
+
+   **Resolution:** Created `ViewerGameState` type that excludes the solution. The host now strips the solution before sending game state to viewers.
 
 2. **Peer ID Predictability**
    Session codes use `wordle-${code}` as the PeerJS ID. If an attacker knows the code format, they could attempt to connect to active sessions.
@@ -360,7 +363,7 @@ setJoinCode(e.target.value.toUpperCase().slice(0, 6));
    **Resolution:** Implemented Zod schema validation for all incoming peer messages.
 
 ### Recommendations:
-- Remove solution from viewer's game state (calculate status server-side... or in this case, host-side)
+- ~~Remove solution from viewer's game state (calculate status server-side... or in this case, host-side)~~ ✅ **RESOLVED**
 - Add optional password/PIN for sessions
 - ~~Implement message schema validation using a library like Zod~~ ✅ **RESOLVED**
 
@@ -478,8 +481,10 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
 
    **Resolution:** Created `useGameSession` hook (`src/hooks/useGameSession.ts`) that encapsulates all game session orchestration logic including game mode state, suggestion status, multiplayer integration, and event handlers. App.tsx is now reduced from ~275 lines to ~145 lines and focuses purely on rendering.
 
-6. **Hide Solution from Viewer**
-   - Restructure multiplayer to not expose solution to viewers
+6. ~~**Hide Solution from Viewer**~~ ✅ **RESOLVED**
+   - ~~Restructure multiplayer to not expose solution to viewers~~
+
+   **Resolution:** Created `ViewerGameState` type that excludes the solution field. The `sendGameState` function in `useMultiplayer.ts` now strips the solution before sending to viewers, preventing cheating by inspecting network traffic. Updated Zod validation schema to reflect the new structure.
 
 7. **Add Error Boundaries**
    - Wrap the app in React error boundaries for graceful failure handling
@@ -532,9 +537,9 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
 This Wordle clone demonstrates strong React and TypeScript fundamentals with an innovative serverless multiplayer approach. The codebase is well-organized, type-safe, and follows modern React patterns.
 
 The main areas for improvement are:
-1. Adding a testing infrastructure
+1. ~~Adding a testing infrastructure~~ ✅ **RESOLVED**
 2. Improving network error resilience
-3. Addressing security concerns around solution exposure
-4. Reducing complexity in the main App component
+3. ~~Addressing security concerns around solution exposure~~ ✅ **RESOLVED**
+4. ~~Reducing complexity in the main App component~~ ✅ **RESOLVED**
 
 With these improvements, this would be a production-ready application suitable for deployment at scale.

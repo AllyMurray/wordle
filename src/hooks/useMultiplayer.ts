@@ -5,6 +5,7 @@ import type {
   ConnectionStatus,
   PendingSuggestion,
   GameState,
+  ViewerGameState,
   UseMultiplayerReturn,
   PeerMessage,
 } from '../types';
@@ -30,7 +31,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
 
   const peerRef = useRef<Peer | null>(null);
   const connectionRef = useRef<DataConnection | null>(null);
-  const gameStateCallbackRef = useRef<((state: GameState) => void) | null>(null);
+  const gameStateCallbackRef = useRef<((state: ViewerGameState) => void) | null>(null);
   const suggestionResponseCallbackRef = useRef<((accepted: boolean) => void) | null>(null);
   const hostGameRef = useRef<(() => void) | null>(null);
 
@@ -201,15 +202,24 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   }, [cleanup]);
 
   // Send game state to viewer (called by host)
+  // Security: Strip the solution before sending to prevent cheating
   const sendGameState = useCallback((state: GameState): void => {
     if (role === 'host' && connectionRef.current?.open) {
-      const message: PeerMessage = { type: 'game-state', state };
+      // Create viewer-safe state without the solution
+      const viewerState: ViewerGameState = {
+        guesses: state.guesses,
+        currentGuess: state.currentGuess,
+        gameOver: state.gameOver,
+        won: state.won,
+        message: state.message,
+      };
+      const message: PeerMessage = { type: 'game-state', state: viewerState };
       connectionRef.current.send(message);
     }
   }, [role]);
 
   // Register callback for receiving game state (used by viewer)
-  const onGameStateReceived = useCallback((callback: (state: GameState) => void): void => {
+  const onGameStateReceived = useCallback((callback: (state: ViewerGameState) => void): void => {
     gameStateCallbackRef.current = callback;
   }, []);
 
