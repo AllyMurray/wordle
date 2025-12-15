@@ -153,8 +153,14 @@ const SESSION_CODE_LENGTH = 6;
 
 Updated `useMultiplayer.ts`, `useWordle.ts`, and `Lobby.tsx` to use these centralized constants.
 
-#### 2. Inline Comments
-While the code is readable, complex algorithms like `getLetterStatus` would benefit from inline comments explaining the two-pass approach.
+#### 2. ~~Inline Comments~~ ✅ **RESOLVED**
+~~While the code is readable, complex algorithms like `getLetterStatus` would benefit from inline comments explaining the two-pass approach.~~
+
+**Resolution:** Added comprehensive JSDoc and inline comments to the `getLetterStatus` function in `useWordle.ts`. The comments explain:
+- The purpose of the two-pass algorithm for handling duplicate letters correctly
+- A concrete example (APPLE/PAPAL) showing how each pass works
+- Why two passes are necessary (to prevent "stealing" correct matches)
+- Clear annotations for each section of the algorithm
 
 #### 3. Word List Data Quality
 In `src/data/words.ts`, some entries are not 5 letters and rely on `.filter(word => word.length === 5)`:

@@ -42,29 +42,61 @@ export const useWordle = (options: UseWordleOptions = {}): UseWordleReturn => {
     return WORDS.includes(word.toLowerCase());
   }, []);
 
-  // Get letter status for coloring tiles
+  /**
+   * Determines the status of each letter in a guess compared to the solution.
+   *
+   * Uses a two-pass algorithm to correctly handle duplicate letters:
+   *
+   * Example: solution="APPLE", guess="PAPAL"
+   * - Pass 1: P at position 2 matches exactly → marked 'correct'
+   * - Pass 2: P at position 0 finds remaining P → marked 'present'
+   *           A at position 1 finds A → marked 'present'
+   *           A at position 3 finds no remaining A → stays 'absent'
+   *           L at position 4 finds L → marked 'present'
+   * - Result: ['present', 'present', 'correct', 'absent', 'present']
+   *
+   * Why two passes? A single pass could incorrectly mark a letter as 'present'
+   * when a later occurrence is an exact match. By processing exact matches first,
+   * we ensure correct letters are never "stolen" by earlier present matches.
+   *
+   * @param guess - The player's guessed word (uppercase)
+   * @param solutionWord - The target word to compare against (uppercase)
+   * @returns Array of letter statuses: 'correct' (green), 'present' (yellow), or 'absent' (gray)
+   */
   const getLetterStatus = useCallback((guess: string, solutionWord: string): LetterStatus[] => {
+    // Initialize all letters as 'absent' - they'll be upgraded as matches are found
     const result: LetterStatus[] = Array(WORD_LENGTH).fill('absent') as LetterStatus[];
+
+    // Create a mutable copy of solution letters to track which have been matched
+    // Letters are set to null once used to prevent double-counting duplicates
     const solutionArray: (string | null)[] = solutionWord.split('');
     const guessArray = guess.split('');
 
-    // First pass: mark correct letters (green)
+    // PASS 1: Find exact position matches (green/correct)
+    // These take highest priority and must be identified first
     guessArray.forEach((letter, i) => {
       if (letter === solutionArray[i]) {
         result[i] = 'correct';
-        solutionArray[i] = null; // Mark as used
+        // Mark this solution letter as consumed so it can't match again
+        solutionArray[i] = null;
       }
     });
 
-    // Second pass: mark present letters (yellow)
+    // PASS 2: Find wrong-position matches (yellow/present)
+    // Only check letters that weren't exact matches
     guessArray.forEach((letter, i) => {
+      // Skip letters already marked correct in pass 1
       if (result[i] === 'correct') return;
 
+      // Search for this letter among remaining (non-null) solution letters
       const foundIndex = solutionArray.findIndex(s => s === letter);
       if (foundIndex !== -1) {
         result[i] = 'present';
-        solutionArray[foundIndex] = null; // Mark as used
+        // Consume this solution letter to prevent duplicate matches
+        // e.g., guessing "ALLOY" against "APPLE" - only first L gets 'present'
+        solutionArray[foundIndex] = null;
       }
+      // Letters not found remain 'absent' (their initial value)
     });
 
     return result;
