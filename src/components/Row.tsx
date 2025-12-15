@@ -1,7 +1,16 @@
 import Tile from './Tile';
+import type { Guess } from '../types';
 import './Row.css';
 
-const Row = ({ guess, currentGuess, wordLength, isCurrentRow, shake }) => {
+interface RowProps {
+  guess?: Guess | undefined;
+  currentGuess: string;
+  wordLength: number;
+  isCurrentRow: boolean;
+  shake: boolean;
+}
+
+const Row = ({ guess, currentGuess, wordLength, isCurrentRow, shake }: RowProps) => {
   // If this row has a submitted guess
   if (guess) {
     return (
@@ -21,7 +30,7 @@ const Row = ({ guess, currentGuess, wordLength, isCurrentRow, shake }) => {
         {Array(wordLength)
           .fill('')
           .map((_, i) => (
-            <Tile key={i} letter={letters[i] || ''} position={i} />
+            <Tile key={i} letter={letters[i] ?? ''} position={i} />
           ))}
       </div>
     );

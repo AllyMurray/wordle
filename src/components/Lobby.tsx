@@ -1,20 +1,30 @@
-import { useState } from 'react';
+import { useState, type KeyboardEvent, type ChangeEvent } from 'react';
 import './Lobby.css';
 
-const Lobby = ({ onHost, onJoin, onPlaySolo }) => {
+interface LobbyProps {
+  onHost: () => void;
+  onJoin: (code: string) => void;
+  onPlaySolo: () => void;
+}
+
+const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
   const [joinCode, setJoinCode] = useState('');
   const [showJoin, setShowJoin] = useState(false);
 
-  const handleJoin = () => {
+  const handleJoin = (): void => {
     if (joinCode.trim().length === 6) {
       onJoin(joinCode.trim().toUpperCase());
     }
   };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       handleJoin();
     }
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setJoinCode(e.target.value.toUpperCase().slice(0, 6));
   };
 
   return (
@@ -43,7 +53,7 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }) => {
                 className="join-input"
                 placeholder="Enter 6-digit code"
                 value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
+                onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 maxLength={6}
                 autoFocus

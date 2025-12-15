@@ -4,16 +4,17 @@ import Keyboard from './components/Keyboard';
 import Lobby from './components/Lobby';
 import { useWordle } from './hooks/useWordle';
 import { useMultiplayer } from './hooks/useMultiplayer';
+import type { GameMode, SuggestionStatus } from './types';
 import './App.css';
 
 function App() {
-  const [gameMode, setGameMode] = useState(null); // null | 'solo' | 'multiplayer'
-  const [suggestionStatus, setSuggestionStatus] = useState(null); // null | 'pending' | 'accepted' | 'rejected'
+  const [gameMode, setGameMode] = useState<GameMode>(null);
+  const [suggestionStatus, setSuggestionStatus] = useState<SuggestionStatus>(null);
 
   const multiplayer = useMultiplayer();
 
   // Handle viewer guess changes - send to host as suggestion preview
-  const handleViewerGuessChange = useCallback((guess) => {
+  const handleViewerGuessChange = useCallback((guess: string): void => {
     if (guess.length === 5) {
       multiplayer.sendSuggestion(guess);
     } else {
@@ -82,7 +83,7 @@ function App() {
   }, [multiplayer.isHost, multiplayer.partnerConnected, multiplayer.sendGameState, getGameState]);
 
   // Handle physical keyboard input
-  const handleKeyDown = useCallback((e) => {
+  const handleKeyDown = useCallback((e: KeyboardEvent): void => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
 
     if (e.key === 'Enter') {
@@ -105,27 +106,27 @@ function App() {
     }
   }, [handleKeyDown, gameMode]);
 
-  const handlePlaySolo = () => {
+  const handlePlaySolo = (): void => {
     setGameMode('solo');
   };
 
-  const handleHost = () => {
+  const handleHost = (): void => {
     multiplayer.hostGame();
     setGameMode('multiplayer');
   };
 
-  const handleJoin = (code) => {
+  const handleJoin = (code: string): void => {
     multiplayer.joinGame(code);
     setGameMode('multiplayer');
   };
 
-  const handleLeave = () => {
+  const handleLeave = (): void => {
     multiplayer.leaveSession();
     setGameMode(null);
     newGame();
   };
 
-  const handleNewGame = () => {
+  const handleNewGame = (): void => {
     newGame();
     // Send new game state to viewer
     if (multiplayer.isHost && multiplayer.partnerConnected) {
@@ -136,7 +137,7 @@ function App() {
   };
 
   // Handle host accepting a suggestion
-  const handleAcceptSuggestion = useCallback(() => {
+  const handleAcceptSuggestion = useCallback((): void => {
     const word = multiplayer.acceptSuggestion();
     if (word) {
       submitWord(word);
@@ -144,7 +145,7 @@ function App() {
   }, [multiplayer, submitWord]);
 
   // Handle host rejecting a suggestion
-  const handleRejectSuggestion = useCallback(() => {
+  const handleRejectSuggestion = useCallback((): void => {
     multiplayer.rejectSuggestion();
   }, [multiplayer]);
 
