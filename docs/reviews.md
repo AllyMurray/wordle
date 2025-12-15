@@ -451,9 +451,9 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
 
 ### Areas for Improvement
 
-1. **No Linting in CI**: Add `npm run lint` step
-2. **No Tests in CI**: Add test step when tests exist
-3. **No PR Checks**: Add workflow for pull request validation
+1. ~~**No Linting in CI**~~: ✅ **RESOLVED** - Added `npm run lint` step to deploy workflow
+2. ~~**No Tests in CI**~~: ✅ **RESOLVED** - Added test step to deploy workflow
+3. ~~**No PR Checks**~~: ✅ **RESOLVED** - Added `pr-check.yml` workflow for pull request validation
 4. **No Dependency Caching**: Could improve build times with dependency caching beyond npm cache
 
 ### Recommended Additions:
