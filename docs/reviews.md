@@ -452,14 +452,14 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
    - Add unit tests for `useWordle` hook
    - Test the letter status algorithm exhaustively
 
-2. **Add Linting to CI**
+2. ~~**Add Linting to CI**~~ ✅ **RESOLVED**
    - Include `npm run lint` in the GitHub Actions workflow
 
 3. **Validate Peer Messages**
    - Add runtime validation for received WebRTC messages
    - Consider using Zod or similar for schema validation
 
-4. **Fix Word List**
+4. ~~**Fix Word List**~~ ✅ **RESOLVED**
    - Clean up the word list to only contain valid 5-letter words
    - Remove the runtime filter as it indicates data issues
 
