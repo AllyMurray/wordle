@@ -81,10 +81,12 @@ useEffect(() => {
 
 ### Areas for Improvement
 
-#### 1. App.tsx Complexity
-`App.tsx` (277 lines) handles significant orchestration logic. Consider extracting:
-- Game session management into a custom hook (e.g., `useGameSession`)
-- Multiplayer event handlers into a separate module
+#### 1. ~~App.tsx Complexity~~ ✅ **RESOLVED**
+~~`App.tsx` (277 lines) handles significant orchestration logic. Consider extracting:~~
+- ~~Game session management into a custom hook (e.g., `useGameSession`)~~
+- ~~Multiplayer event handlers into a separate module~~
+
+**Resolution:** Created `useGameSession` hook to extract game session logic. App.tsx now ~145 lines, focused purely on rendering.
 
 #### 2. Missing Context API
 For deeply shared state like game mode and multiplayer status, React Context could reduce prop drilling and simplify the component tree.
@@ -471,8 +473,10 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
 
 ### Medium Priority
 
-5. **Extract Game Session Logic**
-   - Create `useGameSession` hook to reduce App.tsx complexity
+5. ~~**Extract Game Session Logic**~~ ✅ **RESOLVED**
+   - ~~Create `useGameSession` hook to reduce App.tsx complexity~~
+
+   **Resolution:** Created `useGameSession` hook (`src/hooks/useGameSession.ts`) that encapsulates all game session orchestration logic including game mode state, suggestion status, multiplayer integration, and event handlers. App.tsx is now reduced from ~275 lines to ~145 lines and focuses purely on rendering.
 
 6. **Hide Solution from Viewer**
    - Restructure multiplayer to not expose solution to viewers
@@ -511,7 +515,8 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
 |------|-----|------------|
 | `src/hooks/useWordle.ts` | 249 | Excellent - Clean game logic encapsulation |
 | `src/hooks/useMultiplayer.ts` | 317 | Good - Consider splitting message handling |
-| `src/App.tsx` | 278 | Fair - Too much orchestration logic |
+| `src/hooks/useGameSession.ts` | 188 | Excellent - Clean session orchestration |
+| `src/App.tsx` | 145 | Good - Now focused on rendering (improved from 278 lines) |
 | `src/types.ts` | 91 | Excellent - Comprehensive type definitions |
 | `src/components/Board.tsx` | 36 | Excellent - Simple and focused |
 | `src/components/Row.tsx` | 52 | Excellent - Clean conditional rendering |
