@@ -1,5 +1,21 @@
 import { z } from 'zod';
 
+// Network resilience constants
+export const NETWORK_CONFIG = {
+  // Reconnection settings
+  MAX_RECONNECT_ATTEMPTS: 5,
+  INITIAL_RECONNECT_DELAY_MS: 1000,
+  MAX_RECONNECT_DELAY_MS: 16000,
+
+  // Heartbeat settings
+  HEARTBEAT_INTERVAL_MS: 5000,
+  HEARTBEAT_TIMEOUT_MS: 15000,
+
+  // Message acknowledgment settings
+  ACK_TIMEOUT_MS: 5000,
+  MAX_RETRY_ATTEMPTS: 3,
+} as const;
+
 // Tile and letter status types
 export type LetterStatus = 'correct' | 'present' | 'absent';
 
@@ -154,6 +170,24 @@ const SuggestionRejectedMessageSchema = z.object({
   type: z.literal('suggestion-rejected'),
 });
 
+// Schema for message acknowledgment
+const AckMessageSchema = z.object({
+  type: z.literal('ack'),
+  messageId: z.string(),
+});
+
+// Schema for heartbeat ping
+const PingMessageSchema = z.object({
+  type: z.literal('ping'),
+  timestamp: z.number(),
+});
+
+// Schema for heartbeat pong
+const PongMessageSchema = z.object({
+  type: z.literal('pong'),
+  timestamp: z.number(),
+});
+
 // Union schema for all peer messages
 export const PeerMessageSchema = z.discriminatedUnion('type', [
   RequestStateMessageSchema,
@@ -162,6 +196,9 @@ export const PeerMessageSchema = z.discriminatedUnion('type', [
   ClearSuggestionMessageSchema,
   SuggestionAcceptedMessageSchema,
   SuggestionRejectedMessageSchema,
+  AckMessageSchema,
+  PingMessageSchema,
+  PongMessageSchema,
 ]);
 
 // Inferred PeerMessage type from schema

@@ -491,9 +491,15 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
 
    **Resolution:** Created `ErrorBoundary` class component (`src/components/ErrorBoundary.tsx`) that catches JavaScript errors in the component tree and displays a user-friendly fallback UI with "Reload Page" and "Try Again" options. The App component is wrapped with ErrorBoundary in `main.tsx`.
 
-8. **Improve Network Resilience**
-   - Add retry logic for temporary connection failures
-   - Implement message acknowledgment for critical updates
+8. ~~**Improve Network Resilience**~~ ✅ **RESOLVED**
+   - ~~Add retry logic for temporary connection failures~~
+   - ~~Implement message acknowledgment for critical updates~~
+
+   **Resolution:** Implemented comprehensive network resilience features:
+   - Added automatic reconnection with exponential backoff (1s → 2s → 4s → 8s → 16s) for viewers when connection drops
+   - Implemented message acknowledgment system for critical messages (game state, suggestions, responses) with retry logic (up to 3 retries, 5s timeout)
+   - Added heartbeat/ping-pong monitoring (5s interval, 15s timeout) to detect stale connections early
+   - Network configuration is centralized in `NETWORK_CONFIG` constants in `types.ts`
 
 ### Low Priority
 
@@ -540,7 +546,7 @@ This Wordle clone demonstrates strong React and TypeScript fundamentals with an 
 
 The main areas for improvement are:
 1. ~~Adding a testing infrastructure~~ ✅ **RESOLVED**
-2. Improving network error resilience
+2. ~~Improving network error resilience~~ ✅ **RESOLVED**
 3. ~~Addressing security concerns around solution exposure~~ ✅ **RESOLVED**
 4. ~~Reducing complexity in the main App component~~ ✅ **RESOLVED**
 
