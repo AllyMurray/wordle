@@ -9,9 +9,18 @@ export interface Guess {
   status: LetterStatus[];
 }
 
-// Game state that gets synced between host and viewer
+// Full game state (used internally by host)
 export interface GameState {
   solution: string;
+  guesses: Guess[];
+  currentGuess: string;
+  gameOver: boolean;
+  won: boolean;
+  message: string;
+}
+
+// Game state sent to viewer (solution hidden for security)
+export interface ViewerGameState {
   guesses: Guess[];
   currentGuess: string;
   gameOver: boolean;
@@ -74,7 +83,7 @@ export interface UseMultiplayerReturn {
   joinGame: (code: string) => void;
   leaveSession: () => void;
   sendGameState: (state: GameState) => void;
-  onGameStateReceived: (callback: (state: GameState) => void) => void;
+  onGameStateReceived: (callback: (state: ViewerGameState) => void) => void;
   sendSuggestion: (word: string) => void;
   clearSuggestion: () => void;
   acceptSuggestion: () => string | null;
@@ -104,9 +113,8 @@ const GuessSchema = z.object({
   status: z.array(LetterStatusSchema),
 });
 
-// Schema for game state
-const GameStateSchema = z.object({
-  solution: z.string(),
+// Schema for viewer game state (solution hidden for security)
+const ViewerGameStateSchema = z.object({
   guesses: z.array(GuessSchema),
   currentGuess: z.string(),
   gameOver: z.boolean(),
@@ -119,10 +127,10 @@ const RequestStateMessageSchema = z.object({
   type: z.literal('request-state'),
 });
 
-// Schema for game-state message
+// Schema for game-state message (sent to viewer, solution hidden)
 const GameStateMessageSchema = z.object({
   type: z.literal('game-state'),
-  state: GameStateSchema,
+  state: ViewerGameStateSchema,
 });
 
 // Schema for suggest-word message
