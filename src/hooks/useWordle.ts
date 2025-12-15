@@ -8,9 +8,10 @@ import type {
   UseWordleOptions,
   UseWordleReturn,
 } from '../types';
+import { GAME_CONFIG } from '../types';
 
-const WORD_LENGTH = 5;
-const MAX_GUESSES = 6;
+const WORD_LENGTH = GAME_CONFIG.WORD_LENGTH;
+const MAX_GUESSES = GAME_CONFIG.MAX_GUESSES;
 
 export const useWordle = (options: UseWordleOptions = {}): UseWordleReturn => {
   const { isViewer = false, onStateChange, onViewerGuessChange } = options;
@@ -121,7 +122,7 @@ export const useWordle = (options: UseWordleOptions = {}): UseWordleReturn => {
         setTimeout(() => {
           setShake(false);
           setMessage('');
-        }, 500);
+        }, GAME_CONFIG.SHAKE_DURATION_MS);
         return;
       }
 
@@ -131,7 +132,7 @@ export const useWordle = (options: UseWordleOptions = {}): UseWordleReturn => {
         setTimeout(() => {
           setShake(false);
           setMessage('');
-        }, 500);
+        }, GAME_CONFIG.SHAKE_DURATION_MS);
         return;
       }
 

@@ -134,8 +134,8 @@ useEffect(() => {
 
 ### Areas for Improvement
 
-#### 1. Magic Numbers
-Some magic values could be extracted as named constants:
+#### 1. ~~Magic Numbers~~ ✅ **RESOLVED**
+~~Some magic values could be extracted as named constants:~~
 
 ```typescript
 // In useMultiplayer.ts:56
@@ -144,6 +144,14 @@ const code = generateSessionCode(); // Uses hardcoded 6
 // Could be:
 const SESSION_CODE_LENGTH = 6;
 ```
+
+**Resolution:** Created `GAME_CONFIG` object in `types.ts` containing all game configuration constants:
+- `WORD_LENGTH`, `MAX_GUESSES` - game rules
+- `SESSION_CODE_LENGTH`, `SESSION_CODE_CHARS` - multiplayer session codes
+- `SHAKE_DURATION_MS`, `HOST_RETRY_DELAY_MS` - UI timing
+- `PEER_DEBUG_LEVEL`, `MESSAGE_ID_RANDOM_LENGTH` - technical settings
+
+Updated `useMultiplayer.ts`, `useWordle.ts`, and `Lobby.tsx` to use these centralized constants.
 
 #### 2. Inline Comments
 While the code is readable, complex algorithms like `getLetterStatus` would benefit from inline comments explaining the two-pass approach.

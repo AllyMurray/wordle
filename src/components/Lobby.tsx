@@ -1,4 +1,5 @@
 import { useState, type KeyboardEvent, type ChangeEvent } from 'react';
+import { GAME_CONFIG } from '../types';
 import './Lobby.css';
 
 interface LobbyProps {
@@ -12,7 +13,7 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
   const [showJoin, setShowJoin] = useState(false);
 
   const handleJoin = (): void => {
-    if (joinCode.trim().length === 6) {
+    if (joinCode.trim().length === GAME_CONFIG.SESSION_CODE_LENGTH) {
       onJoin(joinCode.trim().toUpperCase());
     }
   };
@@ -24,7 +25,7 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    setJoinCode(e.target.value.toUpperCase().slice(0, 6));
+    setJoinCode(e.target.value.toUpperCase().slice(0, GAME_CONFIG.SESSION_CODE_LENGTH));
   };
 
   return (
@@ -65,28 +66,28 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
               aria-label="Join game form"
             >
               <label htmlFor="join-code" className="sr-only">
-                Enter 6-character session code
+                Enter {GAME_CONFIG.SESSION_CODE_LENGTH}-character session code
               </label>
               <input
                 id="join-code"
                 type="text"
                 className="join-input"
-                placeholder="Enter 6-digit code"
+                placeholder={`Enter ${GAME_CONFIG.SESSION_CODE_LENGTH}-digit code`}
                 value={joinCode}
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
-                maxLength={6}
+                maxLength={GAME_CONFIG.SESSION_CODE_LENGTH}
                 autoFocus
                 aria-describedby="join-code-hint"
               />
               <span id="join-code-hint" className="sr-only">
-                {joinCode.length} of 6 characters entered
+                {joinCode.length} of {GAME_CONFIG.SESSION_CODE_LENGTH} characters entered
               </span>
               <div className="join-actions">
                 <button
                   className="lobby-btn join-confirm"
                   onClick={handleJoin}
-                  disabled={joinCode.length !== 6}
+                  disabled={joinCode.length !== GAME_CONFIG.SESSION_CODE_LENGTH}
                   aria-label="Confirm and join game"
                 >
                   Join
