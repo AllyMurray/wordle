@@ -9,11 +9,12 @@ import type {
   UseMultiplayerReturn,
   PeerMessage,
 } from '../types';
-import { validatePeerMessage, NETWORK_CONFIG } from '../types';
+import { validatePeerMessage, NETWORK_CONFIG, GAME_CONFIG } from '../types';
 
 // Generate a unique message ID for acknowledgment tracking
 const generateMessageId = (): string => {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  // substring(2, 2 + length) to skip '0.' prefix from Math.random().toString(36)
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 2 + GAME_CONFIG.MESSAGE_ID_RANDOM_LENGTH)}`;
 };
 
 // Message with ID for acknowledgment tracking
@@ -26,9 +27,9 @@ interface PendingMessage {
 
 // Generate a short, readable session code
 const generateSessionCode = (): string => {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const chars = GAME_CONFIG.SESSION_CODE_CHARS;
   let code = '';
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < GAME_CONFIG.SESSION_CODE_LENGTH; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
@@ -235,7 +236,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
     const peerId = `wordle-${code}`;
 
     const peer = new Peer(peerId, {
-      debug: 0,
+      debug: GAME_CONFIG.PEER_DEBUG_LEVEL,
     });
 
     peer.on('open', () => {
@@ -320,7 +321,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
       if (err.type === 'unavailable-id') {
         // Session code already taken, try again
         setConnectionStatus('disconnected');
-        setTimeout(() => hostGameRef.current?.(), 100);
+        setTimeout(() => hostGameRef.current?.(), GAME_CONFIG.HOST_RETRY_DELAY_MS);
       } else {
         setConnectionStatus('error');
         setErrorMessage('Connection error. Please try again.');
@@ -363,7 +364,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
       const hostPeerId = `wordle-${code.toUpperCase()}`;
 
       const peer = new Peer(peerId, {
-        debug: 0,
+        debug: GAME_CONFIG.PEER_DEBUG_LEVEL,
       });
 
       // Handle heartbeat timeout - attempt reconnection

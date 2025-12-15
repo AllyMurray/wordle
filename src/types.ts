@@ -1,5 +1,26 @@
 import { z } from 'zod';
 
+// Game configuration constants
+export const GAME_CONFIG = {
+  // Word settings
+  WORD_LENGTH: 5,
+  MAX_GUESSES: 6,
+
+  // Session code settings
+  SESSION_CODE_LENGTH: 6,
+  SESSION_CODE_CHARS: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', // Excludes ambiguous characters (0, O, 1, I)
+
+  // UI timing (in milliseconds)
+  SHAKE_DURATION_MS: 500,
+  HOST_RETRY_DELAY_MS: 100,
+
+  // PeerJS configuration
+  PEER_DEBUG_LEVEL: 0,
+
+  // Message ID generation
+  MESSAGE_ID_RANDOM_LENGTH: 7,
+} as const;
+
 // Network resilience constants
 export const NETWORK_CONFIG = {
   // Reconnection settings
