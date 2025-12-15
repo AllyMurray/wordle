@@ -202,17 +202,21 @@ import type { Guess, LetterStatus, GameState } from '../types';
 
 ### Areas for Improvement
 
-#### 1. PeerMessage Type Location
-The `PeerMessage` union type is defined within `useMultiplayer.ts`. Consider moving to `types.ts` for consistency and reusability.
+#### 1. ~~PeerMessage Type Location~~ ✅ **RESOLVED**
+~~The `PeerMessage` union type is defined within `useMultiplayer.ts`. Consider moving to `types.ts` for consistency and reusability.~~
 
-#### 2. Type Assertion Safety
-In `useMultiplayer.ts:116`:
+**Resolution:** Moved PeerMessage type definition to `types.ts` along with Zod validation schemas.
+
+#### 2. ~~Type Assertion Safety~~ ✅ **RESOLVED**
+~~In `useMultiplayer.ts:116`:~~
 
 ```typescript
 const message = data as PeerMessage;
 ```
 
-This assertion could be unsafe if malformed data is received. Consider adding runtime validation.
+~~This assertion could be unsafe if malformed data is received. Consider adding runtime validation.~~
+
+**Resolution:** Implemented Zod schema validation for all peer messages. Incoming data is now validated using `validatePeerMessage()` before processing.
 
 ---
 
@@ -344,17 +348,19 @@ setJoinCode(e.target.value.toUpperCase().slice(0, 6));
 3. **No Authentication**
    Anyone with a session code can join as a viewer. No verification of intended participants.
 
-4. **Message Validation**
-   Received peer messages are cast without validation:
+4. ~~**Message Validation**~~ ✅ **RESOLVED**
+   ~~Received peer messages are cast without validation:~~
    ```typescript
    const message = data as PeerMessage;
    ```
-   Malicious peers could send malformed messages.
+   ~~Malicious peers could send malformed messages.~~
+
+   **Resolution:** Implemented Zod schema validation for all incoming peer messages.
 
 ### Recommendations:
 - Remove solution from viewer's game state (calculate status server-side... or in this case, host-side)
 - Add optional password/PIN for sessions
-- Implement message schema validation using a library like Zod
+- ~~Implement message schema validation using a library like Zod~~ ✅ **RESOLVED**
 
 ---
 
@@ -455,7 +461,7 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
 2. ~~**Add Linting to CI**~~ ✅ **RESOLVED**
    - Include `npm run lint` in the GitHub Actions workflow
 
-3. **Validate Peer Messages**
+3. ~~**Validate Peer Messages**~~ ✅ **RESOLVED**
    - Add runtime validation for received WebRTC messages
    - Consider using Zod or similar for schema validation
 

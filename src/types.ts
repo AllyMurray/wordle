@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 // Tile and letter status types
 export type LetterStatus = 'correct' | 'present' | 'absent';
 
@@ -88,3 +90,85 @@ export type GameMode = null | 'solo' | 'multiplayer';
 
 // Suggestion status for viewer
 export type SuggestionStatus = null | 'pending' | 'accepted' | 'rejected' | 'invalid';
+
+// ============================================
+// Zod Schemas for Peer Message Validation
+// ============================================
+
+// Schema for letter status
+const LetterStatusSchema = z.enum(['correct', 'present', 'absent']);
+
+// Schema for a guess
+const GuessSchema = z.object({
+  word: z.string(),
+  status: z.array(LetterStatusSchema),
+});
+
+// Schema for game state
+const GameStateSchema = z.object({
+  solution: z.string(),
+  guesses: z.array(GuessSchema),
+  currentGuess: z.string(),
+  gameOver: z.boolean(),
+  won: z.boolean(),
+  message: z.string(),
+});
+
+// Schema for request-state message
+const RequestStateMessageSchema = z.object({
+  type: z.literal('request-state'),
+});
+
+// Schema for game-state message
+const GameStateMessageSchema = z.object({
+  type: z.literal('game-state'),
+  state: GameStateSchema,
+});
+
+// Schema for suggest-word message
+const SuggestWordMessageSchema = z.object({
+  type: z.literal('suggest-word'),
+  word: z.string(),
+});
+
+// Schema for clear-suggestion message
+const ClearSuggestionMessageSchema = z.object({
+  type: z.literal('clear-suggestion'),
+});
+
+// Schema for suggestion-accepted message
+const SuggestionAcceptedMessageSchema = z.object({
+  type: z.literal('suggestion-accepted'),
+});
+
+// Schema for suggestion-rejected message
+const SuggestionRejectedMessageSchema = z.object({
+  type: z.literal('suggestion-rejected'),
+});
+
+// Union schema for all peer messages
+export const PeerMessageSchema = z.discriminatedUnion('type', [
+  RequestStateMessageSchema,
+  GameStateMessageSchema,
+  SuggestWordMessageSchema,
+  ClearSuggestionMessageSchema,
+  SuggestionAcceptedMessageSchema,
+  SuggestionRejectedMessageSchema,
+]);
+
+// Inferred PeerMessage type from schema
+export type PeerMessage = z.infer<typeof PeerMessageSchema>;
+
+// Validation result type
+export type PeerMessageValidationResult =
+  | { success: true; message: PeerMessage }
+  | { success: false; error: string };
+
+// Validate and parse a peer message
+export const validatePeerMessage = (data: unknown): PeerMessageValidationResult => {
+  const result = PeerMessageSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, message: result.data };
+  }
+  return { success: false, error: result.error.message };
+};

@@ -6,42 +6,9 @@ import type {
   PendingSuggestion,
   GameState,
   UseMultiplayerReturn,
+  PeerMessage,
 } from '../types';
-
-// Message types for peer communication
-interface RequestStateMessage {
-  type: 'request-state';
-}
-
-interface GameStateMessage {
-  type: 'game-state';
-  state: GameState;
-}
-
-interface SuggestWordMessage {
-  type: 'suggest-word';
-  word: string;
-}
-
-interface ClearSuggestionMessage {
-  type: 'clear-suggestion';
-}
-
-interface SuggestionAcceptedMessage {
-  type: 'suggestion-accepted';
-}
-
-interface SuggestionRejectedMessage {
-  type: 'suggestion-rejected';
-}
-
-type PeerMessage =
-  | RequestStateMessage
-  | GameStateMessage
-  | SuggestWordMessage
-  | ClearSuggestionMessage
-  | SuggestionAcceptedMessage
-  | SuggestionRejectedMessage;
+import { validatePeerMessage } from '../types';
 
 // Generate a short, readable session code
 const generateSessionCode = (): string => {
@@ -113,7 +80,12 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
       });
 
       conn.on('data', (data) => {
-        const message = data as PeerMessage;
+        const validationResult = validatePeerMessage(data);
+        if (!validationResult.success) {
+          console.warn('Invalid peer message received:', validationResult.error);
+          return;
+        }
+        const message = validationResult.message;
         if (message.type === 'request-state') {
           // State request handled by App.tsx useEffect
         } else if (message.type === 'suggest-word') {
@@ -183,12 +155,17 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
         setPartnerConnected(true);
 
         // Request initial game state
-        const requestMessage: RequestStateMessage = { type: 'request-state' };
+        const requestMessage: PeerMessage = { type: 'request-state' };
         conn.send(requestMessage);
       });
 
       conn.on('data', (data) => {
-        const message = data as PeerMessage;
+        const validationResult = validatePeerMessage(data);
+        if (!validationResult.success) {
+          console.warn('Invalid peer message received:', validationResult.error);
+          return;
+        }
+        const message = validationResult.message;
         if (message.type === 'game-state' && gameStateCallbackRef.current) {
           gameStateCallbackRef.current(message.state);
         } else if (message.type === 'suggestion-accepted' || message.type === 'suggestion-rejected') {
@@ -226,7 +203,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   // Send game state to viewer (called by host)
   const sendGameState = useCallback((state: GameState): void => {
     if (role === 'host' && connectionRef.current?.open) {
-      const message: GameStateMessage = { type: 'game-state', state };
+      const message: PeerMessage = { type: 'game-state', state };
       connectionRef.current.send(message);
     }
   }, [role]);
@@ -239,7 +216,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   // Send a word suggestion to host (called by viewer)
   const sendSuggestion = useCallback((word: string): void => {
     if (role === 'viewer' && connectionRef.current?.open) {
-      const message: SuggestWordMessage = { type: 'suggest-word', word };
+      const message: PeerMessage = { type: 'suggest-word', word };
       connectionRef.current.send(message);
     }
   }, [role]);
@@ -247,7 +224,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   // Clear suggestion on host (called by viewer when typing changes)
   const clearSuggestion = useCallback((): void => {
     if (role === 'viewer' && connectionRef.current?.open) {
-      const message: ClearSuggestionMessage = { type: 'clear-suggestion' };
+      const message: PeerMessage = { type: 'clear-suggestion' };
       connectionRef.current.send(message);
     }
   }, [role]);
@@ -255,7 +232,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   // Accept the pending suggestion (called by host)
   const acceptSuggestion = useCallback((): string | null => {
     if (role === 'host' && connectionRef.current?.open && pendingSuggestion) {
-      const message: SuggestionAcceptedMessage = { type: 'suggestion-accepted' };
+      const message: PeerMessage = { type: 'suggestion-accepted' };
       connectionRef.current.send(message);
       const word = pendingSuggestion.word;
       setPendingSuggestion(null);
@@ -267,7 +244,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   // Reject the pending suggestion (called by host)
   const rejectSuggestion = useCallback((): void => {
     if (role === 'host' && connectionRef.current?.open) {
-      const message: SuggestionRejectedMessage = { type: 'suggestion-rejected' };
+      const message: PeerMessage = { type: 'suggestion-rejected' };
       connectionRef.current.send(message);
       setPendingSuggestion(null);
     }
