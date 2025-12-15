@@ -162,13 +162,15 @@ Updated `useMultiplayer.ts`, `useWordle.ts`, and `Lobby.tsx` to use these centra
 - Why two passes are necessary (to prevent "stealing" correct matches)
 - Clear annotations for each section of the algorithm
 
-#### 3. Word List Data Quality
-In `src/data/words.ts`, some entries are not 5 letters and rely on `.filter(word => word.length === 5)`:
-- `'army'` (4 letters)
-- `'fossil'`, `'golden'`, `'lonely'` (6 letters)
-- `'hasn'` (4 letters, incomplete word)
+#### 3. ~~Word List Data Quality~~ ✅ **RESOLVED**
+~~In `src/data/words.ts`, some entries are not 5 letters and rely on `.filter(word => word.length === 5)`:~~
+- ~~`'army'` (4 letters)~~
+- ~~`'fossil'`, `'golden'`, `'lonely'` (6 letters)~~
+- ~~`'hasn'` (4 letters, incomplete word)~~
 
-This runtime filter works but indicates data quality issues in the source list.
+~~This runtime filter works but indicates data quality issues in the source list.~~
+
+**Resolution:** The word list has been cleaned up. All entries in `src/data/words.ts` are now valid 5-letter words. The runtime filter has been removed as it is no longer needed.
 
 ---
 
