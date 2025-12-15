@@ -402,7 +402,7 @@ setJoinCode(e.target.value.toUpperCase().slice(0, 6));
 - Multiplayer sessions across different browsers
 
 #### Suggested Testing Stack:
-- Jest + React Testing Library for unit/integration
+- Vitest + React Testing Library for unit/integration (native Vite integration)
 - Playwright or Cypress for E2E
 - Mock Service Worker (MSW) for PeerJS mocking
 
@@ -448,7 +448,7 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
 ### High Priority
 
 1. **Add Testing Infrastructure**
-   - Set up Jest with React Testing Library
+   - Set up Vitest with React Testing Library (seamless Vite integration)
    - Add unit tests for `useWordle` hook
    - Test the letter status algorithm exhaustively
 
