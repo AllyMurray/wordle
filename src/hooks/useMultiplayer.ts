@@ -9,7 +9,7 @@ import type {
   UseMultiplayerReturn,
   PeerMessage,
 } from '../types';
-import { validatePeerMessage, NETWORK_CONFIG, GAME_CONFIG, sanitizeSessionCode, isValidSessionCode, sanitizeSessionPin, isValidSessionPin } from '../types';
+import { validatePeerMessage, NETWORK_CONFIG, GAME_CONFIG, sanitizeSessionCode, isValidSessionCode, sanitizeSessionPin, isValidSessionPin, generatePeerSecret, createFullSessionCode } from '../types';
 
 // Generate a unique message ID for acknowledgment tracking
 const generateMessageId = (): string => {
@@ -25,14 +25,24 @@ interface PendingMessage {
   timeoutId: ReturnType<typeof setTimeout>;
 }
 
-// Generate a short, readable session code
-const generateSessionCode = (): string => {
+// Generate the human-readable part of the session code
+const generateReadableCode = (): string => {
   const chars = GAME_CONFIG.SESSION_CODE_CHARS;
   let code = '';
   for (let i = 0; i < GAME_CONFIG.SESSION_CODE_LENGTH; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
+};
+
+// Generate a full session code with unpredictable peer secret
+// Format: "{readable}-{secret}" e.g., "ABCDEF-a3f2b1"
+// This makes the peer ID much harder to guess even if the attacker
+// knows the code format, as they'd need to guess both parts
+const generateSessionCode = (): string => {
+  const readable = generateReadableCode();
+  const secret = generatePeerSecret();
+  return createFullSessionCode(readable, secret);
 };
 
 export const useMultiplayer = (): UseMultiplayerReturn => {
@@ -276,7 +286,11 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
     sessionPinRef.current = sanitizedPin;
     setSessionPin(sanitizedPin);
 
+    // Generate full session code with secret for unpredictable peer ID
+    // Format: "ABCDEF-a3f2b1" (readable-secret)
     const code = generateSessionCode();
+    // Peer ID includes both parts, making it ~10 trillion combinations
+    // instead of ~594 million with just the readable code
     const peerId = `wordle-${code}`;
 
     let peer: Peer;
@@ -479,10 +493,13 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
 
       isAuthenticatedRef.current = false;
       setConnectionStatus('connecting');
-      lastSessionCodeRef.current = code.toUpperCase();
+      // Store the full session code (case-sensitive due to secret part)
+      lastSessionCodeRef.current = code;
 
       const peerId = `wordle-viewer-${Date.now()}`;
-      const hostPeerId = `wordle-${code.toUpperCase()}`;
+      // Use the full session code (already sanitized) for the host peer ID
+      // Format: "wordle-ABCDEF-a3f2b1" where secret is lowercase
+      const hostPeerId = `wordle-${code}`;
 
       let peer: Peer;
       try {

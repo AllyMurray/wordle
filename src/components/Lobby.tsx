@@ -1,5 +1,5 @@
 import { memo, useState, type KeyboardEvent, type ChangeEvent } from 'react';
-import { GAME_CONFIG, sanitizeSessionCode, isValidSessionCode, sanitizeSessionPin, isValidSessionPin } from '../types';
+import { GAME_CONFIG, sanitizeSessionCode, isValidSessionCode, sanitizeSessionPin, isValidSessionPin, parseSessionCode } from '../types';
 import './Lobby.css';
 
 interface LobbyProps {
@@ -154,22 +154,24 @@ const Lobby = memo(({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
               aria-label="Join game form"
             >
               <label htmlFor="join-code" className="sr-only">
-                Enter {GAME_CONFIG.SESSION_CODE_LENGTH}-character session code
+                Enter {GAME_CONFIG.FULL_SESSION_CODE_LENGTH}-character session code (format: XXXXXX-xxxxxx)
               </label>
               <input
                 id="join-code"
                 type="text"
                 className="join-input"
-                placeholder={`Enter ${GAME_CONFIG.SESSION_CODE_LENGTH}-digit code`}
+                placeholder="Code (e.g., ABCDEF-a3f2b1)"
                 value={joinCode}
                 onChange={handleCodeChange}
                 onKeyDown={handleJoinKeyDown}
-                maxLength={GAME_CONFIG.SESSION_CODE_LENGTH}
+                maxLength={GAME_CONFIG.FULL_SESSION_CODE_LENGTH}
                 autoFocus
                 aria-describedby="join-code-hint"
               />
               <span id="join-code-hint" className="sr-only">
-                {joinCode.length} of {GAME_CONFIG.SESSION_CODE_LENGTH} characters entered
+                {parseSessionCode(joinCode)
+                  ? 'Valid session code format'
+                  : `Enter code in format XXXXXX-xxxxxx (${joinCode.length} of ${GAME_CONFIG.FULL_SESSION_CODE_LENGTH} characters)`}
               </span>
               <label htmlFor="join-pin" className="sr-only">
                 Enter PIN if required by host
@@ -193,7 +195,7 @@ const Lobby = memo(({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
                 <button
                   className="lobby-btn join-confirm"
                   onClick={handleJoin}
-                  disabled={joinCode.length !== GAME_CONFIG.SESSION_CODE_LENGTH}
+                  disabled={!isValidSessionCode(joinCode)}
                   aria-label="Confirm and join game"
                 >
                   Join

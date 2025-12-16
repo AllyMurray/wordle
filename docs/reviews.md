@@ -385,8 +385,14 @@ setJoinCode(e.target.value.toUpperCase().slice(0, 6));
 
    **Resolution:** Created `ViewerGameState` type that excludes the solution. The host now strips the solution before sending game state to viewers.
 
-2. **Peer ID Predictability**
-   Session codes use `wordle-${code}` as the PeerJS ID. If an attacker knows the code format, they could attempt to connect to active sessions.
+2. ~~**Peer ID Predictability**~~ ✅ **RESOLVED**
+   ~~Session codes use `wordle-${code}` as the PeerJS ID. If an attacker knows the code format, they could attempt to connect to active sessions.~~
+
+   **Resolution:** Added a cryptographically random secret suffix to session codes. The new format is `{readable}-{secret}` (e.g., "ABCDEF-a3f2b1") where:
+   - Readable part: 6 uppercase characters for easy sharing
+   - Secret part: 6 lowercase hex characters for unpredictability
+
+   This increases the search space from ~594 million (29^6) to ~10 trillion (29^6 × 16^6) combinations, making brute-force attacks impractical. The peer ID now includes both parts, making it impossible to guess the full ID even if an attacker knows the format.
 
 3. ~~**No Authentication**~~ ✅ **RESOLVED**
    ~~Anyone with a session code can join as a viewer. No verification of intended participants.~~

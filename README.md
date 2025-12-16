@@ -6,9 +6,10 @@ A React-based Wordle clone with real-time peer-to-peer multiplayer support, buil
 
 - **Solo Play**: Classic Wordle gameplay with random 5-letter words
 - **Multiplayer Mode**: Real-time P2P collaboration via WebRTC
-  - Host creates a game session with a unique code
+  - Host creates a game session with a unique code (format: `ABCDEF-a3f2b1`)
   - Viewers can connect and suggest words
   - Optional PIN authentication for private sessions
+  - Cryptographically secure session codes (~10 trillion combinations)
 - **Progressive Web App**: Installable with offline support
 - **Accessibility**: Screen reader support with ARIA live announcements
 - **Performance Optimized**: React.memo on all components to prevent unnecessary re-renders
@@ -268,6 +269,17 @@ flowchart TD
 
 The multiplayer system uses PeerJS for WebRTC-based peer-to-peer connections.
 
+### Session Code Format
+
+Session codes use a secure two-part format: `{readable}-{secret}`
+
+| Part | Format | Example | Purpose |
+|------|--------|---------|---------|
+| Readable | 6 uppercase chars | `ABCDEF` | Human-friendly sharing |
+| Secret | 6 lowercase hex | `a3f2b1` | Brute-force protection |
+
+**Security:** This format provides ~10 trillion possible combinations (29^6 × 16^6), making it impractical for attackers to guess active session codes.
+
 ```mermaid
 sequenceDiagram
     participant H as Host
@@ -275,7 +287,7 @@ sequenceDiagram
     participant V as Viewer
 
     Note over H: Create Session
-    H->>P: Register with session code
+    H->>P: Register with session code (ABCDEF-a3f2b1)
     P-->>H: Connection ready
 
     Note over V: Join Session

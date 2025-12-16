@@ -7,8 +7,15 @@ export const GAME_CONFIG = {
   MAX_GUESSES: 6,
 
   // Session code settings
+  // Human-readable part (e.g., "ABCDEF")
   SESSION_CODE_LENGTH: 6,
   SESSION_CODE_CHARS: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', // Excludes ambiguous characters (0, O, 1, I)
+  // Random secret suffix for peer ID unpredictability (e.g., "a3f2b1")
+  PEER_SECRET_LENGTH: 6,
+  PEER_SECRET_CHARS: '0123456789abcdef', // Hex characters for the secret
+  // Full session code format: "{readable}-{secret}" = 6 + 1 + 6 = 13 chars
+  FULL_SESSION_CODE_LENGTH: 13,
+  SESSION_CODE_SEPARATOR: '-',
 
   // Session PIN settings (optional authentication)
   SESSION_PIN_MIN_LENGTH: 4,
@@ -27,27 +34,114 @@ export const GAME_CONFIG = {
 } as const;
 
 /**
+ * Generate a random peer secret (lowercase hex string).
+ */
+export const generatePeerSecret = (): string => {
+  const chars = GAME_CONFIG.PEER_SECRET_CHARS;
+  let secret = '';
+  for (let i = 0; i < GAME_CONFIG.PEER_SECRET_LENGTH; i++) {
+    secret += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return secret;
+};
+
+/**
+ * Parse a full session code into its readable and secret parts.
+ * Returns null if the format is invalid.
+ */
+export const parseSessionCode = (
+  fullCode: string
+): { readable: string; secret: string } | null => {
+  const parts = fullCode.split(GAME_CONFIG.SESSION_CODE_SEPARATOR);
+  if (parts.length !== 2) {
+    return null;
+  }
+  const [readable, secret] = parts;
+  if (
+    readable === undefined ||
+    secret === undefined ||
+    readable.length !== GAME_CONFIG.SESSION_CODE_LENGTH ||
+    secret.length !== GAME_CONFIG.PEER_SECRET_LENGTH
+  ) {
+    return null;
+  }
+  return { readable, secret };
+};
+
+/**
+ * Create a full session code from readable and secret parts.
+ */
+export const createFullSessionCode = (readable: string, secret: string): string => {
+  return `${readable}${GAME_CONFIG.SESSION_CODE_SEPARATOR}${secret}`;
+};
+
+/**
  * Sanitize a session code input by removing invalid characters.
- * Only allows characters from SESSION_CODE_CHARS and converts to uppercase.
- * Also handles common ambiguous character substitutions (0→O, 1→I).
+ * Handles the full format: "{readable}-{secret}"
+ * - Readable part: uppercase letters from SESSION_CODE_CHARS
+ * - Secret part: lowercase hex characters
  */
 export const sanitizeSessionCode = (input: string): string => {
-  return input
+  const separator = GAME_CONFIG.SESSION_CODE_SEPARATOR;
+  const separatorIndex = input.indexOf(separator);
+
+  if (separatorIndex === -1) {
+    // No separator yet - sanitize as readable part only
+    return input
+      .toUpperCase()
+      .split('')
+      .filter((char) => GAME_CONFIG.SESSION_CODE_CHARS.includes(char))
+      .join('')
+      .slice(0, GAME_CONFIG.SESSION_CODE_LENGTH);
+  }
+
+  // Has separator - sanitize both parts
+  const readablePart = input.slice(0, separatorIndex);
+  const secretPart = input.slice(separatorIndex + 1);
+
+  const sanitizedReadable = readablePart
     .toUpperCase()
     .split('')
     .filter((char) => GAME_CONFIG.SESSION_CODE_CHARS.includes(char))
     .join('')
     .slice(0, GAME_CONFIG.SESSION_CODE_LENGTH);
+
+  const sanitizedSecret = secretPart
+    .toLowerCase()
+    .split('')
+    .filter((char) => GAME_CONFIG.PEER_SECRET_CHARS.includes(char))
+    .join('')
+    .slice(0, GAME_CONFIG.PEER_SECRET_LENGTH);
+
+  return `${sanitizedReadable}${separator}${sanitizedSecret}`;
 };
 
 /**
- * Validate that a session code contains only valid characters and is the correct length.
+ * Validate that a session code is in the correct full format: "{readable}-{secret}"
+ * - Readable: SESSION_CODE_LENGTH uppercase chars from SESSION_CODE_CHARS
+ * - Secret: PEER_SECRET_LENGTH lowercase hex chars
  */
 export const isValidSessionCode = (code: string): boolean => {
-  if (code.length !== GAME_CONFIG.SESSION_CODE_LENGTH) {
+  if (code.length !== GAME_CONFIG.FULL_SESSION_CODE_LENGTH) {
     return false;
   }
-  return code.split('').every((char) => GAME_CONFIG.SESSION_CODE_CHARS.includes(char));
+
+  const parsed = parseSessionCode(code);
+  if (!parsed) {
+    return false;
+  }
+
+  const { readable, secret } = parsed;
+
+  const readableValid = readable
+    .split('')
+    .every((char) => GAME_CONFIG.SESSION_CODE_CHARS.includes(char));
+
+  const secretValid = secret
+    .split('')
+    .every((char) => GAME_CONFIG.PEER_SECRET_CHARS.includes(char));
+
+  return readableValid && secretValid;
 };
 
 /**
