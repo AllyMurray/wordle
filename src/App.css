@@ -150,6 +150,45 @@
   filter: drop-shadow(0 0 2px rgba(181, 159, 59, 0.5));
 }
 
+/* Share buttons */
+.share-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.share-btn {
+  border: none;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.share-btn.copy {
+  background-color: #3a3a3c;
+  color: #818384;
+}
+
+.share-btn.copy:hover {
+  background-color: #4a4a4c;
+  color: white;
+}
+
+.share-btn.whatsapp {
+  background-color: #25d366;
+  color: white;
+}
+
+.share-btn.whatsapp:hover {
+  background-color: #1da851;
+}
+
+.share-btn:active {
+  transform: scale(0.95);
+}
+
 .viewer-label {
   color: white;
   font-size: 0.9rem;
