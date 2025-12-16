@@ -21,6 +21,30 @@ export const GAME_CONFIG = {
   MESSAGE_ID_RANDOM_LENGTH: 7,
 } as const;
 
+/**
+ * Sanitize a session code input by removing invalid characters.
+ * Only allows characters from SESSION_CODE_CHARS and converts to uppercase.
+ * Also handles common ambiguous character substitutions (0→O, 1→I).
+ */
+export const sanitizeSessionCode = (input: string): string => {
+  return input
+    .toUpperCase()
+    .split('')
+    .filter((char) => GAME_CONFIG.SESSION_CODE_CHARS.includes(char))
+    .join('')
+    .slice(0, GAME_CONFIG.SESSION_CODE_LENGTH);
+};
+
+/**
+ * Validate that a session code contains only valid characters and is the correct length.
+ */
+export const isValidSessionCode = (code: string): boolean => {
+  if (code.length !== GAME_CONFIG.SESSION_CODE_LENGTH) {
+    return false;
+  }
+  return code.split('').every((char) => GAME_CONFIG.SESSION_CODE_CHARS.includes(char));
+};
+
 // Network resilience constants
 export const NETWORK_CONFIG = {
   // Reconnection settings

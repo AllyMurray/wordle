@@ -346,12 +346,19 @@ Consider implementing message acknowledgment for critical messages.
 
 Errors are logged with descriptive warnings and handled gracefully without crashing the application.
 
-#### 4. No Input Sanitization
-Join code input is uppercased but not validated for potentially malicious input:
+#### 4. ~~No Input Sanitization~~ ✅ **RESOLVED**
+~~Join code input is uppercased but not validated for potentially malicious input:~~
 
 ```typescript
 setJoinCode(e.target.value.toUpperCase().slice(0, 6));
 ```
+
+**Resolution:** Added comprehensive input sanitization for session codes:
+- Created `sanitizeSessionCode()` function in `types.ts` that filters input to only allow valid session code characters (from `SESSION_CODE_CHARS`)
+- Created `isValidSessionCode()` function to validate that a code contains only valid characters and is the correct length
+- Updated `Lobby.tsx` to use `sanitizeSessionCode()` in the input handler, preventing invalid characters from being entered
+- Added defense-in-depth validation in `useMultiplayer.ts` `joinGame()` function that validates the code before attempting connection
+- Invalid codes now display a clear error message to users
 
 ---
 

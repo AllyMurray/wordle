@@ -9,7 +9,7 @@ import type {
   UseMultiplayerReturn,
   PeerMessage,
 } from '../types';
-import { validatePeerMessage, NETWORK_CONFIG, GAME_CONFIG } from '../types';
+import { validatePeerMessage, NETWORK_CONFIG, GAME_CONFIG, sanitizeSessionCode, isValidSessionCode } from '../types';
 
 // Generate a unique message ID for acknowledgment tracking
 const generateMessageId = (): string => {
@@ -602,9 +602,17 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   // Join an existing game session
   const joinGame = useCallback(
     (code: string): void => {
+      // Sanitize and validate the session code
+      const sanitizedCode = sanitizeSessionCode(code);
+      if (!isValidSessionCode(sanitizedCode)) {
+        setConnectionStatus('error');
+        setErrorMessage('Invalid session code. Please check and try again.');
+        return;
+      }
+
       cleanup();
-      setSessionCode(code.toUpperCase());
-      attemptConnection(code, false);
+      setSessionCode(sanitizedCode);
+      attemptConnection(sanitizedCode, false);
     },
     [cleanup, attemptConnection]
   );

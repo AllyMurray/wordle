@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent, type ChangeEvent } from 'react';
-import { GAME_CONFIG } from '../types';
+import { GAME_CONFIG, sanitizeSessionCode, isValidSessionCode } from '../types';
 import './Lobby.css';
 
 interface LobbyProps {
@@ -13,8 +13,9 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
   const [showJoin, setShowJoin] = useState(false);
 
   const handleJoin = (): void => {
-    if (joinCode.trim().length === GAME_CONFIG.SESSION_CODE_LENGTH) {
-      onJoin(joinCode.trim().toUpperCase());
+    const sanitizedCode = sanitizeSessionCode(joinCode);
+    if (isValidSessionCode(sanitizedCode)) {
+      onJoin(sanitizedCode);
     }
   };
 
@@ -25,7 +26,8 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    setJoinCode(e.target.value.toUpperCase().slice(0, GAME_CONFIG.SESSION_CODE_LENGTH));
+    // Sanitize input to only allow valid session code characters
+    setJoinCode(sanitizeSessionCode(e.target.value));
   };
 
   return (
