@@ -411,3 +411,180 @@ export const validatePeerMessage = (data: unknown): PeerMessageValidationResult 
   }
   return { success: false, error: result.error.message };
 };
+
+// ============================================
+// Game Statistics (Privacy-Respecting Analytics)
+// ============================================
+
+// Statistics stored locally in the browser
+export interface GameStatistics {
+  // Total counts
+  gamesPlayed: number;
+  gamesWon: number;
+
+  // Streaks
+  currentStreak: number;
+  maxStreak: number;
+
+  // Guess distribution (index = number of guesses - 1, so index 0 = won in 1 guess)
+  guessDistribution: [number, number, number, number, number, number];
+
+  // Last game date (ISO string) for streak tracking
+  lastGameDate: string | null;
+
+  // Game mode breakdown
+  soloGamesPlayed: number;
+  multiplayerGamesPlayed: number;
+}
+
+// Default statistics for new users
+export const DEFAULT_STATISTICS: GameStatistics = {
+  gamesPlayed: 0,
+  gamesWon: 0,
+  currentStreak: 0,
+  maxStreak: 0,
+  guessDistribution: [0, 0, 0, 0, 0, 0],
+  lastGameDate: null,
+  soloGamesPlayed: 0,
+  multiplayerGamesPlayed: 0,
+};
+
+// LocalStorage key for statistics
+export const STATS_STORAGE_KEY = 'wordle-statistics';
+
+// Schema for validating stored statistics
+const GuessDistributionSchema = z.tuple([
+  z.number(),
+  z.number(),
+  z.number(),
+  z.number(),
+  z.number(),
+  z.number(),
+]);
+
+const GameStatisticsSchema = z.object({
+  gamesPlayed: z.number().min(0),
+  gamesWon: z.number().min(0),
+  currentStreak: z.number().min(0),
+  maxStreak: z.number().min(0),
+  guessDistribution: GuessDistributionSchema,
+  lastGameDate: z.string().nullable(),
+  soloGamesPlayed: z.number().min(0),
+  multiplayerGamesPlayed: z.number().min(0),
+});
+
+// Load statistics from localStorage with validation
+export const loadStatistics = (): GameStatistics => {
+  try {
+    const stored = localStorage.getItem(STATS_STORAGE_KEY);
+    if (!stored) {
+      return { ...DEFAULT_STATISTICS };
+    }
+    const parsed = JSON.parse(stored) as unknown;
+    const result = GameStatisticsSchema.safeParse(parsed);
+    if (result.success) {
+      return result.data;
+    }
+    // Invalid data, return defaults
+    return { ...DEFAULT_STATISTICS };
+  } catch {
+    // Parse error, return defaults
+    return { ...DEFAULT_STATISTICS };
+  }
+};
+
+// Save statistics to localStorage
+export const saveStatistics = (stats: GameStatistics): void => {
+  try {
+    localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
+  } catch {
+    // Storage error (e.g., quota exceeded), silently ignore
+  }
+};
+
+// Check if two dates are consecutive days
+const isConsecutiveDay = (lastDate: string, currentDate: string): boolean => {
+  const last = new Date(lastDate);
+  const current = new Date(currentDate);
+
+  // Reset to start of day for comparison
+  last.setHours(0, 0, 0, 0);
+  current.setHours(0, 0, 0, 0);
+
+  const diffTime = current.getTime() - last.getTime();
+  const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+  return diffDays === 1;
+};
+
+// Check if date is today
+const isToday = (dateStr: string): boolean => {
+  const date = new Date(dateStr);
+  const today = new Date();
+
+  date.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return date.getTime() === today.getTime();
+};
+
+// Record a completed game
+export const recordGameResult = (
+  stats: GameStatistics,
+  won: boolean,
+  guessCount: number,
+  gameMode: 'solo' | 'multiplayer'
+): GameStatistics => {
+  const today = new Date().toISOString().split('T')[0];
+  if (!today) {
+    return stats;
+  }
+
+  const newStats = { ...stats };
+
+  // Update total counts
+  newStats.gamesPlayed += 1;
+
+  // Update game mode counts
+  if (gameMode === 'solo') {
+    newStats.soloGamesPlayed += 1;
+  } else {
+    newStats.multiplayerGamesPlayed += 1;
+  }
+
+  if (won) {
+    newStats.gamesWon += 1;
+
+    // Update guess distribution (0-indexed, so guess 1 = index 0)
+    const distributionIndex = Math.min(guessCount - 1, 5);
+    newStats.guessDistribution = [...newStats.guessDistribution] as [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+    ];
+    newStats.guessDistribution[distributionIndex] =
+      (newStats.guessDistribution[distributionIndex] ?? 0) + 1;
+
+    // Update streak
+    if (stats.lastGameDate && isConsecutiveDay(stats.lastGameDate, today)) {
+      newStats.currentStreak = stats.currentStreak + 1;
+    } else if (stats.lastGameDate && isToday(stats.lastGameDate)) {
+      // Same day, don't change streak
+    } else {
+      // New streak starts
+      newStats.currentStreak = 1;
+    }
+
+    newStats.maxStreak = Math.max(newStats.maxStreak, newStats.currentStreak);
+  } else {
+    // Lost - reset current streak
+    newStats.currentStreak = 0;
+  }
+
+  newStats.lastGameDate = today;
+
+  return newStats;
+};

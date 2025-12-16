@@ -45,8 +45,21 @@
   color: white;
 }
 
-.header-spacer {
-  width: 70px;
+.stats-btn {
+  background: none;
+  border: none;
+  color: #818384;
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  min-width: 70px;
+}
+
+.stats-btn:hover {
+  background-color: #3a3a3c;
+  color: white;
 }
 
 .main {

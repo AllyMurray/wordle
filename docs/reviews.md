@@ -590,9 +590,19 @@ Push to main → Checkout → Setup Node → Install → Typecheck → Build →
     - For future complexity, consider Zustand or Redux Toolkit
     - Current hook-based approach is fine for current scope
 
-11. **Add Analytics**
-    - Track game completions, win rates, and multiplayer usage
-    - Use privacy-respecting analytics
+11. ~~**Add Analytics**~~ ✅ **RESOLVED**
+    - ~~Track game completions, win rates, and multiplayer usage~~
+    - ~~Use privacy-respecting analytics~~
+
+    **Resolution:** Implemented privacy-respecting local analytics stored in browser localStorage:
+    - Created `GameStatistics` type in `types.ts` with Zod validation for data integrity
+    - Tracks: games played, games won, current streak, max streak, guess distribution (1-6), solo/multiplayer breakdown
+    - Created `useStats` hook for accessing and updating statistics
+    - Created `Stats` modal component displaying statistics with visual guess distribution bars
+    - Stats are recorded automatically when a game ends (solo mode or multiplayer host)
+    - Stats modal auto-opens on game completion and can be accessed via "Stats" button in header
+    - Streak tracking considers consecutive days for win streaks
+    - All data stays local to the user's browser - no external analytics or tracking
 
 12. ~~**Progressive Web App**~~ ✅ **RESOLVED**
     - ~~Add service worker for offline solo play~~

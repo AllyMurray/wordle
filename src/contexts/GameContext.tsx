@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode, useState, useCallback } from 'react';
 import { useGameSession, type UseGameSessionReturn } from '../hooks/useGameSession';
+import { useStats, type UseStatsReturn } from '../hooks/useStats';
 import type { GameMode, ConnectionStatus } from '../types';
 
 // Context value type - exposes game mode and multiplayer status
@@ -15,6 +16,12 @@ export interface GameContextValue {
   sessionCode: string;
   sessionPin: string;
   connectionStatus: ConnectionStatus;
+
+  // Statistics
+  stats: UseStatsReturn;
+  isStatsOpen: boolean;
+  openStats: () => void;
+  closeStats: () => void;
 
   // Full session (for components that need everything)
   session: UseGameSessionReturn;
@@ -31,6 +38,11 @@ interface GameProviderProps {
 // GameProvider component - wraps children and provides game context
 export const GameProvider = ({ children }: GameProviderProps) => {
   const session = useGameSession();
+  const stats = useStats();
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
+
+  const openStats = useCallback(() => setIsStatsOpen(true), []);
+  const closeStats = useCallback(() => setIsStatsOpen(false), []);
 
   const value: GameContextValue = {
     // Game mode
@@ -43,6 +55,12 @@ export const GameProvider = ({ children }: GameProviderProps) => {
     sessionCode: session.multiplayer.sessionCode,
     sessionPin: session.multiplayer.sessionPin,
     connectionStatus: session.multiplayer.connectionStatus,
+
+    // Statistics
+    stats,
+    isStatsOpen,
+    openStats,
+    closeStats,
 
     // Full session for components that need complete access
     session,
