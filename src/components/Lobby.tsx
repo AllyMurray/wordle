@@ -6,13 +6,15 @@ interface LobbyProps {
   onHost: (pin?: string) => void;
   onJoin: (code: string, pin?: string) => void;
   onPlaySolo: () => void;
+  initialJoinCode?: string | null;
 }
 
-const Lobby = memo(({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
-  const [joinCode, setJoinCode] = useState('');
+const Lobby = memo(({ onHost, onJoin, onPlaySolo, initialJoinCode }: LobbyProps) => {
+  const [joinCode, setJoinCode] = useState(initialJoinCode || '');
   const [joinPin, setJoinPin] = useState('');
   const [hostPin, setHostPin] = useState('');
-  const [showJoin, setShowJoin] = useState(false);
+  // Show join form if we have an initial join code from URL
+  const [showJoin, setShowJoin] = useState(!!initialJoinCode);
   const [showHost, setShowHost] = useState(false);
 
   const handleJoin = (): void => {
