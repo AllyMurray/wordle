@@ -334,8 +334,17 @@ conn.send(message); // Fire and forget
 
 Consider implementing message acknowledgment for critical messages.
 
-#### 3. Unhandled Promise Rejections
-PeerJS operations could throw unhandled promises. Consider wrapping in try-catch or using error boundaries.
+#### 3. ~~Unhandled Promise Rejections~~ ✅ **RESOLVED**
+~~PeerJS operations could throw unhandled promises. Consider wrapping in try-catch or using error boundaries.~~
+
+**Resolution:** Added comprehensive try-catch wrappers around all PeerJS operations in `useMultiplayer.ts`:
+- Peer constructor calls in both `hostGame` and `attemptConnection` functions
+- `peer.connect()` call when connecting to host
+- All `conn.send()` operations including message acknowledgments, heartbeat pings/pongs, and suggestion clearing
+- `peer.destroy()` and `conn.close()` operations in cleanup functions
+- Retry send operations in the message acknowledgment system
+
+Errors are logged with descriptive warnings and handled gracefully without crashing the application.
 
 #### 4. No Input Sanitization
 Join code input is uppercased but not validated for potentially malicious input:

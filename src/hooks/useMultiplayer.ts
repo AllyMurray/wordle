@@ -99,14 +99,26 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
     stopHeartbeat();
     clearReconnectTimeout();
 
-    if (connectionRef.current) {
-      connectionRef.current.close();
+    try {
+      if (connectionRef.current) {
+        connectionRef.current.close();
+        connectionRef.current = null;
+      }
+    } catch (err) {
+      console.warn('Error closing connection:', err);
       connectionRef.current = null;
     }
-    if (peerRef.current) {
-      peerRef.current.destroy();
+
+    try {
+      if (peerRef.current) {
+        peerRef.current.destroy();
+        peerRef.current = null;
+      }
+    } catch (err) {
+      console.warn('Error destroying peer:', err);
       peerRef.current = null;
     }
+
     setPartnerConnected(false);
     setPendingSuggestion(null);
     reconnectAttemptsRef.current = 0;
@@ -126,7 +138,12 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
 
       // Add message ID to the message for tracking (using type assertion for internal tracking)
       const messageWithId = { ...message, _messageId: messageId };
-      conn.send(messageWithId);
+      try {
+        conn.send(messageWithId);
+      } catch (err) {
+        console.warn('Error sending message:', err);
+        return null;
+      }
 
       if (requireAck) {
         const scheduleRetry = (): ReturnType<typeof setTimeout> => {
@@ -137,9 +154,15 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
             if (pending.retries < NETWORK_CONFIG.MAX_RETRY_ATTEMPTS) {
               // Retry sending
               if (conn.open) {
-                conn.send(messageWithId);
-                pending.retries++;
-                pending.timeoutId = scheduleRetry();
+                try {
+                  conn.send(messageWithId);
+                  pending.retries++;
+                  pending.timeoutId = scheduleRetry();
+                } catch (err) {
+                  console.warn('Error retrying message:', err);
+                  pendingMessagesRef.current.delete(messageId);
+                  onAckTimeout?.();
+                }
               }
             } else {
               // Max retries reached
@@ -177,8 +200,12 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   // Send acknowledgment for a received message
   const sendAck = useCallback((conn: DataConnection, messageId: string): void => {
     if (conn.open) {
-      const ackMessage: PeerMessage = { type: 'ack', messageId };
-      conn.send(ackMessage);
+      try {
+        const ackMessage: PeerMessage = { type: 'ack', messageId };
+        conn.send(ackMessage);
+      } catch (err) {
+        console.warn('Error sending acknowledgment:', err);
+      }
     }
   }, []);
 
@@ -191,16 +218,21 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
       // Send periodic pings
       heartbeatIntervalRef.current = setInterval(() => {
         if (conn.open) {
-          const pingMessage: PeerMessage = { type: 'ping', timestamp: Date.now() };
-          conn.send(pingMessage);
+          try {
+            const pingMessage: PeerMessage = { type: 'ping', timestamp: Date.now() };
+            conn.send(pingMessage);
 
-          // Set timeout for pong response
-          heartbeatTimeoutRef.current = setTimeout(() => {
-            const timeSinceLastHeartbeat = Date.now() - lastHeartbeatRef.current;
-            if (timeSinceLastHeartbeat > NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS) {
-              onTimeout();
-            }
-          }, NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS);
+            // Set timeout for pong response
+            heartbeatTimeoutRef.current = setTimeout(() => {
+              const timeSinceLastHeartbeat = Date.now() - lastHeartbeatRef.current;
+              if (timeSinceLastHeartbeat > NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS) {
+                onTimeout();
+              }
+            }, NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS);
+          } catch (err) {
+            console.warn('Error sending heartbeat ping:', err);
+            onTimeout();
+          }
         }
       }, NETWORK_CONFIG.HEARTBEAT_INTERVAL_MS);
     },
@@ -235,9 +267,17 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
     const code = generateSessionCode();
     const peerId = `wordle-${code}`;
 
-    const peer = new Peer(peerId, {
-      debug: GAME_CONFIG.PEER_DEBUG_LEVEL,
-    });
+    let peer: Peer;
+    try {
+      peer = new Peer(peerId, {
+        debug: GAME_CONFIG.PEER_DEBUG_LEVEL,
+      });
+    } catch (err) {
+      console.error('Error creating peer:', err);
+      setConnectionStatus('error');
+      setErrorMessage('Failed to initialize connection. Please try again.');
+      return;
+    }
 
     peer.on('open', () => {
       setSessionCode(code);
@@ -277,8 +317,12 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
         // Handle heartbeat messages
         if (message.type === 'ping') {
           // Respond with pong
-          const pongMessage: PeerMessage = { type: 'pong', timestamp: message.timestamp };
-          conn.send(pongMessage);
+          try {
+            const pongMessage: PeerMessage = { type: 'pong', timestamp: message.timestamp };
+            conn.send(pongMessage);
+          } catch (err) {
+            console.warn('Error sending pong response:', err);
+          }
           return;
         }
         if (message.type === 'pong') {
@@ -340,14 +384,26 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   const attemptConnection = useCallback(
     (code: string, isReconnect: boolean = false): void => {
       // Cleanup existing peer without resetting reconnection state
-      if (connectionRef.current) {
-        connectionRef.current.close();
+      try {
+        if (connectionRef.current) {
+          connectionRef.current.close();
+          connectionRef.current = null;
+        }
+      } catch (err) {
+        console.warn('Error closing existing connection:', err);
         connectionRef.current = null;
       }
-      if (peerRef.current) {
-        peerRef.current.destroy();
+
+      try {
+        if (peerRef.current) {
+          peerRef.current.destroy();
+          peerRef.current = null;
+        }
+      } catch (err) {
+        console.warn('Error destroying existing peer:', err);
         peerRef.current = null;
       }
+
       stopHeartbeat();
       clearPendingMessages();
 
@@ -363,9 +419,17 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
       const peerId = `wordle-viewer-${Date.now()}`;
       const hostPeerId = `wordle-${code.toUpperCase()}`;
 
-      const peer = new Peer(peerId, {
-        debug: GAME_CONFIG.PEER_DEBUG_LEVEL,
-      });
+      let peer: Peer;
+      try {
+        peer = new Peer(peerId, {
+          debug: GAME_CONFIG.PEER_DEBUG_LEVEL,
+        });
+      } catch (err) {
+        console.error('Error creating peer:', err);
+        setConnectionStatus('error');
+        setErrorMessage('Failed to initialize connection. Please try again.');
+        return;
+      }
 
       // Handle heartbeat timeout - attempt reconnection
       const onHeartbeatTimeout = (): void => {
@@ -389,7 +453,15 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
       };
 
       peer.on('open', () => {
-        const conn = peer.connect(hostPeerId, { reliable: true });
+        let conn: DataConnection;
+        try {
+          conn = peer.connect(hostPeerId, { reliable: true });
+        } catch (err) {
+          console.error('Error connecting to host:', err);
+          setConnectionStatus('error');
+          setErrorMessage('Failed to connect to host. Please try again.');
+          return;
+        }
 
         conn.on('open', () => {
           connectionRef.current = conn;
@@ -431,8 +503,12 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
 
           // Handle heartbeat messages
           if (message.type === 'ping') {
-            const pongMessage: PeerMessage = { type: 'pong', timestamp: message.timestamp };
-            conn.send(pongMessage);
+            try {
+              const pongMessage: PeerMessage = { type: 'pong', timestamp: message.timestamp };
+              conn.send(pongMessage);
+            } catch (err) {
+              console.warn('Error sending pong response:', err);
+            }
             handleHeartbeat();
             return;
           }
@@ -575,8 +651,12 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   // Clear suggestion on host (called by viewer when typing changes)
   const clearSuggestion = useCallback((): void => {
     if (role === 'viewer' && connectionRef.current?.open) {
-      const message: PeerMessage = { type: 'clear-suggestion' };
-      connectionRef.current.send(message);
+      try {
+        const message: PeerMessage = { type: 'clear-suggestion' };
+        connectionRef.current.send(message);
+      } catch (err) {
+        console.warn('Error clearing suggestion:', err);
+      }
     }
   }, [role]);
 
