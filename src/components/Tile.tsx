@@ -35,10 +35,16 @@ const Tile = memo(({ letter, status, position, wordLength }: TileProps) => {
     ariaLabel = `${positionLabel}, ${letter}`;
   }
 
+  // Use CSS custom property for animation delay - more performant than inline styles
+  // Only tiles with status (correct, present, absent) have flip animation
+  const tileStyle = status
+    ? ({ '--tile-delay': `${position * 100}ms` } as React.CSSProperties)
+    : undefined;
+
   return (
     <div
       className={`tile ${status ?? ''} ${hasLetter && !status ? 'filled' : ''}`}
-      style={{ animationDelay: status ? `${position * 100}ms` : '0ms' }}
+      style={tileStyle}
       role="gridcell"
       aria-label={ariaLabel}
       aria-readonly="true"

@@ -22,18 +22,21 @@
   background-color: #538d4e;
   border-color: #538d4e;
   animation: flip 0.5s ease forwards;
+  animation-delay: var(--tile-delay, 0ms);
 }
 
 .tile.present {
   background-color: #b59f3b;
   border-color: #b59f3b;
   animation: flip 0.5s ease forwards;
+  animation-delay: var(--tile-delay, 0ms);
 }
 
 .tile.absent {
   background-color: #3a3a3c;
   border-color: #3a3a3c;
   animation: flip 0.5s ease forwards;
+  animation-delay: var(--tile-delay, 0ms);
 }
 
 @keyframes pop {

@@ -322,17 +322,21 @@ The app works in solo mode even if multiplayer connectivity fails.
 
 ### Areas for Improvement
 
-#### 1. Missing Network Error Recovery
-No retry logic for temporary network failures during gameplay. If a WebRTC connection drops briefly, the viewer must manually rejoin.
+#### 1. ~~Missing Network Error Recovery~~ ✅ **RESOLVED**
+~~No retry logic for temporary network failures during gameplay. If a WebRTC connection drops briefly, the viewer must manually rejoin.~~
 
-#### 2. Silent Message Failures
-Peer messages are sent without confirmation or retry:
+**Resolution:** Implemented automatic reconnection with exponential backoff (1s → 2s → 4s → 8s → 16s) for viewers when connection drops. Network configuration is centralized in `NETWORK_CONFIG` constants.
+
+#### 2. ~~Silent Message Failures~~ ✅ **RESOLVED**
+~~Peer messages are sent without confirmation or retry:~~
 
 ```typescript
 conn.send(message); // Fire and forget
 ```
 
-Consider implementing message acknowledgment for critical messages.
+~~Consider implementing message acknowledgment for critical messages.~~
+
+**Resolution:** Implemented message acknowledgment system for critical messages (game state, suggestions, responses) with retry logic (up to 3 retries, 5s timeout). Added heartbeat/ping-pong monitoring (5s interval, 15s timeout) to detect stale connections early.
 
 #### 3. ~~Unhandled Promise Rejections~~ ✅ **RESOLVED**
 ~~PeerJS operations could throw unhandled promises. Consider wrapping in try-catch or using error boundaries.~~
@@ -440,7 +444,9 @@ setJoinCode(e.target.value.toUpperCase().slice(0, 6));
 
    Each memoized component also includes a `displayName` for better debugging in React DevTools.
 
-3. **CSS Animation Delays**: Tile flip animations use inline `style` for animation delays, which could be optimized with CSS custom properties.
+3. ~~**CSS Animation Delays**~~: ✅ **RESOLVED** ~~Tile flip animations use inline `style` for animation delays, which could be optimized with CSS custom properties.~~
+
+   **Resolution:** Refactored tile flip animations to use CSS custom properties (`--tile-delay`) instead of inline styles. The `animation-delay` is now defined in CSS using `var(--tile-delay, 0ms)` with the custom property set only on tiles with status. This provides better browser optimization and reduces JavaScript object creation.
 
 ---
 
