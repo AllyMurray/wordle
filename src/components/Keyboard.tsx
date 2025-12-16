@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { KeyboardStatus, LetterStatus } from '../types';
 import './Keyboard.css';
 
@@ -36,7 +37,7 @@ const getKeyAriaLabel = (key: string, status: LetterStatus | ''): string => {
   return `${key}${getKeyStatusLabel(status)}`;
 };
 
-const Keyboard = ({ onKeyPress, keyboardStatus, disabled = false }: KeyboardProps) => {
+const Keyboard = memo(({ onKeyPress, keyboardStatus, disabled = false }: KeyboardProps) => {
   const handleClick = (key: string): void => {
     if (disabled) return;
     onKeyPress(key);
@@ -71,6 +72,8 @@ const Keyboard = ({ onKeyPress, keyboardStatus, disabled = false }: KeyboardProp
       ))}
     </div>
   );
-};
+});
+
+Keyboard.displayName = 'Keyboard';
 
 export default Keyboard;

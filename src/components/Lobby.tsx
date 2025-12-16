@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type ChangeEvent } from 'react';
+import { memo, useState, type KeyboardEvent, type ChangeEvent } from 'react';
 import { GAME_CONFIG, sanitizeSessionCode, isValidSessionCode, sanitizeSessionPin, isValidSessionPin } from '../types';
 import './Lobby.css';
 
@@ -8,7 +8,7 @@ interface LobbyProps {
   onPlaySolo: () => void;
 }
 
-const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
+const Lobby = memo(({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
   const [joinCode, setJoinCode] = useState('');
   const [joinPin, setJoinPin] = useState('');
   const [hostPin, setHostPin] = useState('');
@@ -216,6 +216,8 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
       </div>
     </div>
   );
-};
+});
+
+Lobby.displayName = 'Lobby';
 
 export default Lobby;

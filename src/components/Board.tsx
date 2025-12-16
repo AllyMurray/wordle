@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Row from './Row';
 import type { Guess } from '../types';
 import './Board.css';
@@ -10,7 +11,7 @@ interface BoardProps {
   shake: boolean;
 }
 
-const Board = ({ guesses, currentGuess, maxGuesses, wordLength, shake }: BoardProps) => {
+const Board = memo(({ guesses, currentGuess, maxGuesses, wordLength, shake }: BoardProps) => {
   return (
     <div
       className="board"
@@ -36,6 +37,8 @@ const Board = ({ guesses, currentGuess, maxGuesses, wordLength, shake }: BoardPr
         })}
     </div>
   );
-};
+});
+
+Board.displayName = 'Board';
 
 export default Board;

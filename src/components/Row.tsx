@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import Tile from './Tile';
 import type { Guess } from '../types';
 import './Row.css';
@@ -25,7 +26,7 @@ const getStatusDescription = (status: string | undefined): string => {
   }
 };
 
-const Row = ({
+const Row = memo(({
   guess,
   currentGuess,
   wordLength,
@@ -97,6 +98,8 @@ const Row = ({
         ))}
     </div>
   );
-};
+});
+
+Row.displayName = 'Row';
 
 export default Row;

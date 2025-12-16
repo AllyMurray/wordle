@@ -427,7 +427,18 @@ setJoinCode(e.target.value.toUpperCase().slice(0, 6));
 
 1. **Word List Loading**: The 500+ word list is bundled in the JS. For larger lists, consider lazy loading or worker-based validation.
 
-2. **Re-renders**: The `App` component re-renders on any state change. React.memo on child components would optimize this.
+2. ~~**Re-renders**~~: ✅ **RESOLVED**
+   ~~The `App` component re-renders on any state change. React.memo on child components would optimize this.~~
+
+   **Resolution:** Added `React.memo` to all functional components to prevent unnecessary re-renders:
+   - `Tile` - Leaf component that renders frequently
+   - `Row` - Prevents re-renders of completed rows
+   - `Board` - Parent component optimization
+   - `Keyboard` - Only re-renders when keyboard status changes
+   - `Lobby` - Prevents re-renders from parent state changes
+   - `ScreenReaderAnnouncement` - Simple component optimization
+
+   Each memoized component also includes a `displayName` for better debugging in React DevTools.
 
 3. **CSS Animation Delays**: Tile flip animations use inline `style` for animation delays, which could be optimized with CSS custom properties.
 

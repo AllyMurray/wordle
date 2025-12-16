@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import './ScreenReaderAnnouncement.css';
 
 interface ScreenReaderAnnouncementProps {
@@ -9,7 +10,7 @@ interface ScreenReaderAnnouncementProps {
  * Component that announces messages to screen readers using ARIA live regions.
  * Screen readers will announce when the content changes.
  */
-const ScreenReaderAnnouncement = ({
+const ScreenReaderAnnouncement = memo(({
   message,
   priority = 'polite',
 }: ScreenReaderAnnouncementProps) => {
@@ -23,6 +24,8 @@ const ScreenReaderAnnouncement = ({
       {message}
     </div>
   );
-};
+});
+
+ScreenReaderAnnouncement.displayName = 'ScreenReaderAnnouncement';
 
 export default ScreenReaderAnnouncement;

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { LetterStatus } from '../types';
 import './Tile.css';
 
@@ -21,7 +22,7 @@ const getStatusLabel = (status: LetterStatus | undefined): string => {
   }
 };
 
-const Tile = ({ letter, status, position, wordLength }: TileProps) => {
+const Tile = memo(({ letter, status, position, wordLength }: TileProps) => {
   const hasLetter = letter !== '';
   const positionLabel = `Position ${position + 1} of ${wordLength}`;
 
@@ -45,6 +46,8 @@ const Tile = ({ letter, status, position, wordLength }: TileProps) => {
       {letter}
     </div>
   );
-};
+});
+
+Tile.displayName = 'Tile';
 
 export default Tile;
