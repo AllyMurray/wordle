@@ -13,6 +13,7 @@ export interface GameContextValue {
   isViewer: boolean;
   partnerConnected: boolean;
   sessionCode: string;
+  sessionPin: string;
   connectionStatus: ConnectionStatus;
 
   // Full session (for components that need everything)
@@ -40,6 +41,7 @@ export const GameProvider = ({ children }: GameProviderProps) => {
     isViewer: session.multiplayer.isViewer,
     partnerConnected: session.multiplayer.partnerConnected,
     sessionCode: session.multiplayer.sessionCode,
+    sessionPin: session.multiplayer.sessionPin,
     connectionStatus: session.multiplayer.connectionStatus,
 
     // Full session for components that need complete access

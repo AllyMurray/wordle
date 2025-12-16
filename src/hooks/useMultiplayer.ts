@@ -9,7 +9,7 @@ import type {
   UseMultiplayerReturn,
   PeerMessage,
 } from '../types';
-import { validatePeerMessage, NETWORK_CONFIG, GAME_CONFIG, sanitizeSessionCode, isValidSessionCode } from '../types';
+import { validatePeerMessage, NETWORK_CONFIG, GAME_CONFIG, sanitizeSessionCode, isValidSessionCode, sanitizeSessionPin, isValidSessionPin } from '../types';
 
 // Generate a unique message ID for acknowledgment tracking
 const generateMessageId = (): string => {
@@ -38,6 +38,7 @@ const generateSessionCode = (): string => {
 export const useMultiplayer = (): UseMultiplayerReturn => {
   const [role, setRole] = useState<MultiplayerRole>(null);
   const [sessionCode, setSessionCode] = useState('');
+  const [sessionPin, setSessionPin] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
   const [errorMessage, setErrorMessage] = useState('');
   const [partnerConnected, setPartnerConnected] = useState(false);
@@ -47,14 +48,19 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   const connectionRef = useRef<DataConnection | null>(null);
   const gameStateCallbackRef = useRef<((state: ViewerGameState) => void) | null>(null);
   const suggestionResponseCallbackRef = useRef<((accepted: boolean) => void) | null>(null);
-  const hostGameRef = useRef<(() => void) | null>(null);
+  const hostGameRef = useRef<((pin?: string) => void) | null>(null);
+
+  // PIN authentication refs
+  const sessionPinRef = useRef('');
+  const viewerPinRef = useRef('');
+  const isAuthenticatedRef = useRef(false);
 
   // Reconnection state refs
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSessionCodeRef = useRef('');
   const isReconnectingRef = useRef(false);
-  const attemptConnectionRef = useRef<((code: string, isReconnect?: boolean) => void) | null>(null);
+  const attemptConnectionRef = useRef<((code: string, isReconnect?: boolean, pin?: string) => void) | null>(null);
 
   // Message acknowledgment refs
   const pendingMessagesRef = useRef<Map<string, PendingMessage>>(new Map());
@@ -122,6 +128,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
     setPartnerConnected(false);
     setPendingSuggestion(null);
     reconnectAttemptsRef.current = 0;
+    isAuthenticatedRef.current = false;
   }, [clearPendingMessages, stopHeartbeat, clearReconnectTimeout]);
 
   // Send a message with optional acknowledgment tracking
@@ -258,11 +265,16 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   }, []);
 
   // Host a new game session
-  const hostGame = useCallback((): void => {
+  const hostGame = useCallback((pin?: string): void => {
     cleanup();
     setRole('host');
     setConnectionStatus('connecting');
     setErrorMessage('');
+
+    // Store the PIN for authentication (empty string means no PIN required)
+    const sanitizedPin = pin ? sanitizeSessionPin(pin) : '';
+    sessionPinRef.current = sanitizedPin;
+    setSessionPin(sanitizedPin);
 
     const code = generateSessionCode();
     const peerId = `wordle-${code}`;
@@ -285,6 +297,9 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
     });
 
     peer.on('connection', (conn: DataConnection) => {
+      // Track if this connection has been authenticated
+      let connectionAuthenticated = false;
+
       // Close old connection if exists (for rejoin support)
       if (connectionRef.current) {
         connectionRef.current.close();
@@ -293,7 +308,12 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
       setPendingSuggestion(null); // Clear any pending suggestion from old viewer
 
       conn.on('open', () => {
-        setPartnerConnected(true);
+        // If no PIN is required, mark as connected immediately
+        if (sessionPinRef.current === '') {
+          connectionAuthenticated = true;
+          setPartnerConnected(true);
+        }
+        // Otherwise, wait for auth-request from viewer
       });
 
       conn.on('data', (data) => {
@@ -311,6 +331,48 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
         // Handle acknowledgment messages
         if (message.type === 'ack') {
           handleAck(message.messageId);
+          return;
+        }
+
+        // Handle authentication request from viewer
+        if (message.type === 'auth-request') {
+          if (sessionPinRef.current === '') {
+            // No PIN required, accept
+            try {
+              const successMessage: PeerMessage = { type: 'auth-success' };
+              conn.send(successMessage);
+              connectionAuthenticated = true;
+              setPartnerConnected(true);
+            } catch (err) {
+              console.warn('Error sending auth success:', err);
+            }
+          } else if (message.pin === sessionPinRef.current) {
+            // PIN matches, accept
+            try {
+              const successMessage: PeerMessage = { type: 'auth-success' };
+              conn.send(successMessage);
+              connectionAuthenticated = true;
+              setPartnerConnected(true);
+            } catch (err) {
+              console.warn('Error sending auth success:', err);
+            }
+          } else {
+            // PIN doesn't match, reject
+            try {
+              const failureMessage: PeerMessage = { type: 'auth-failure', reason: 'Incorrect PIN' };
+              conn.send(failureMessage);
+              // Close connection after sending rejection
+              setTimeout(() => conn.close(), 100);
+            } catch (err) {
+              console.warn('Error sending auth failure:', err);
+            }
+          }
+          return;
+        }
+
+        // Reject messages from unauthenticated connections (if PIN is required)
+        if (sessionPinRef.current !== '' && !connectionAuthenticated) {
+          console.warn('Received message from unauthenticated connection');
           return;
         }
 
@@ -363,9 +425,9 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
     peer.on('error', (err) => {
       console.error('Peer error:', err);
       if (err.type === 'unavailable-id') {
-        // Session code already taken, try again
+        // Session code already taken, try again with same PIN
         setConnectionStatus('disconnected');
-        setTimeout(() => hostGameRef.current?.(), GAME_CONFIG.HOST_RETRY_DELAY_MS);
+        setTimeout(() => hostGameRef.current?.(sessionPinRef.current), GAME_CONFIG.HOST_RETRY_DELAY_MS);
       } else {
         setConnectionStatus('error');
         setErrorMessage('Connection error. Please try again.');
@@ -382,7 +444,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
 
   // Internal function to attempt connection (used for initial join and reconnection)
   const attemptConnection = useCallback(
-    (code: string, isReconnect: boolean = false): void => {
+    (code: string, isReconnect: boolean = false, pin: string = ''): void => {
       // Cleanup existing peer without resetting reconnection state
       try {
         if (connectionRef.current) {
@@ -411,8 +473,11 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
         setRole('viewer');
         setErrorMessage('');
         reconnectAttemptsRef.current = 0;
+        // Store the PIN for reconnection attempts
+        viewerPinRef.current = pin;
       }
 
+      isAuthenticatedRef.current = false;
       setConnectionStatus('connecting');
       lastSessionCodeRef.current = code.toUpperCase();
 
@@ -442,7 +507,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
           setPartnerConnected(false);
 
           reconnectTimeoutRef.current = setTimeout(() => {
-            attemptConnectionRef.current?.(lastSessionCodeRef.current, true);
+            attemptConnectionRef.current?.(lastSessionCodeRef.current, true, viewerPinRef.current);
           }, delay);
         } else {
           setConnectionStatus('error');
@@ -465,22 +530,22 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
 
         conn.on('open', () => {
           connectionRef.current = conn;
-          setConnectionStatus('connected');
-          setPartnerConnected(true);
           setErrorMessage('');
-          reconnectAttemptsRef.current = 0;
           isReconnectingRef.current = false;
           clearReconnectTimeout();
 
-          // Start heartbeat monitoring
-          startHeartbeat(conn, onHeartbeatTimeout);
+          // Send authentication request with PIN (even if empty)
+          try {
+            const authMessage: PeerMessage = { type: 'auth-request', pin: viewerPinRef.current };
+            conn.send(authMessage);
+          } catch (err) {
+            console.warn('Error sending auth request:', err);
+            setConnectionStatus('error');
+            setErrorMessage('Failed to authenticate. Please try again.');
+            return;
+          }
 
-          // Request initial game state with acknowledgment
-          const requestMessage: PeerMessage = { type: 'request-state' };
-          sendWithAck(conn, requestMessage, true, () => {
-            // If no ack received for state request, try reconnecting
-            onHeartbeatTimeout();
-          });
+          // Don't mark as connected yet - wait for auth-success
         });
 
         conn.on('data', (data) => {
@@ -498,6 +563,41 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
           // Handle acknowledgment messages
           if (message.type === 'ack') {
             handleAck(message.messageId);
+            return;
+          }
+
+          // Handle authentication responses
+          if (message.type === 'auth-success') {
+            isAuthenticatedRef.current = true;
+            setConnectionStatus('connected');
+            setPartnerConnected(true);
+            reconnectAttemptsRef.current = 0;
+
+            // Start heartbeat monitoring
+            startHeartbeat(conn, onHeartbeatTimeout);
+
+            // Request initial game state with acknowledgment
+            const requestMessage: PeerMessage = { type: 'request-state' };
+            sendWithAck(conn, requestMessage, true, () => {
+              // If no ack received for state request, try reconnecting
+              onHeartbeatTimeout();
+            });
+            return;
+          }
+
+          if (message.type === 'auth-failure') {
+            isAuthenticatedRef.current = false;
+            setConnectionStatus('error');
+            setErrorMessage(message.reason || 'Authentication failed');
+            // Don't attempt reconnection on auth failure - it's intentional rejection
+            isReconnectingRef.current = false;
+            reconnectAttemptsRef.current = NETWORK_CONFIG.MAX_RECONNECT_ATTEMPTS;
+            return;
+          }
+
+          // Ignore other messages if not authenticated
+          if (!isAuthenticatedRef.current) {
+            console.warn('Received message before authentication');
             return;
           }
 
@@ -558,7 +658,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
             setErrorMessage(`Host not found. Retrying in ${delay / 1000}s...`);
 
             reconnectTimeoutRef.current = setTimeout(() => {
-              attemptConnectionRef.current?.(lastSessionCodeRef.current, true);
+              attemptConnectionRef.current?.(lastSessionCodeRef.current, true, viewerPinRef.current);
             }, delay);
           } else if (isReconnect) {
             setConnectionStatus('error');
@@ -601,7 +701,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
 
   // Join an existing game session
   const joinGame = useCallback(
-    (code: string): void => {
+    (code: string, pin?: string): void => {
       // Sanitize and validate the session code
       const sanitizedCode = sanitizeSessionCode(code);
       if (!isValidSessionCode(sanitizedCode)) {
@@ -610,9 +710,18 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
         return;
       }
 
+      // Sanitize and validate the PIN (if provided)
+      const sanitizedPin = pin ? sanitizeSessionPin(pin) : '';
+      if (sanitizedPin !== '' && !isValidSessionPin(sanitizedPin)) {
+        setConnectionStatus('error');
+        setErrorMessage('Invalid PIN format. PIN must be 4-8 digits.');
+        return;
+      }
+
       cleanup();
       setSessionCode(sanitizedCode);
-      attemptConnection(sanitizedCode, false);
+      setSessionPin(sanitizedPin);
+      attemptConnection(sanitizedCode, false, sanitizedPin);
     },
     [cleanup, attemptConnection]
   );
@@ -701,6 +810,9 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
     cleanup();
     setRole(null);
     setSessionCode('');
+    setSessionPin('');
+    sessionPinRef.current = '';
+    viewerPinRef.current = '';
     setConnectionStatus('disconnected');
     setErrorMessage('');
   }, [cleanup]);
@@ -713,6 +825,7 @@ export const useMultiplayer = (): UseMultiplayerReturn => {
   return {
     role,
     sessionCode,
+    sessionPin,
     connectionStatus,
     errorMessage,
     partnerConnected,

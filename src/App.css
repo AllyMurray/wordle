@@ -144,6 +144,12 @@
   letter-spacing: 0.2rem;
 }
 
+.session-pin-indicator {
+  font-size: 0.9rem;
+  cursor: help;
+  filter: drop-shadow(0 0 2px rgba(181, 159, 59, 0.5));
+}
+
 .viewer-label {
   color: white;
   font-size: 0.9rem;

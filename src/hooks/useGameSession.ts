@@ -34,8 +34,8 @@ export interface UseGameSessionReturn {
 
   // Game session actions
   handlePlaySolo: () => void;
-  handleHost: () => void;
-  handleJoin: (code: string) => void;
+  handleHost: (pin?: string) => void;
+  handleJoin: (code: string, pin?: string) => void;
   handleLeave: () => void;
   handleNewGame: () => void;
   handleAcceptSuggestion: () => void;
@@ -157,13 +157,13 @@ export const useGameSession = (): UseGameSessionReturn => {
     setGameMode('solo');
   }, []);
 
-  const handleHost = useCallback((): void => {
-    multiplayer.hostGame();
+  const handleHost = useCallback((pin?: string): void => {
+    multiplayer.hostGame(pin);
     setGameMode('multiplayer');
   }, [multiplayer]);
 
-  const handleJoin = useCallback((code: string): void => {
-    multiplayer.joinGame(code);
+  const handleJoin = useCallback((code: string, pin?: string): void => {
+    multiplayer.joinGame(code, pin);
     setGameMode('multiplayer');
   }, [multiplayer]);
 

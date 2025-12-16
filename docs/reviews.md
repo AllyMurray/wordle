@@ -384,8 +384,16 @@ setJoinCode(e.target.value.toUpperCase().slice(0, 6));
 2. **Peer ID Predictability**
    Session codes use `wordle-${code}` as the PeerJS ID. If an attacker knows the code format, they could attempt to connect to active sessions.
 
-3. **No Authentication**
-   Anyone with a session code can join as a viewer. No verification of intended participants.
+3. ~~**No Authentication**~~ ✅ **RESOLVED**
+   ~~Anyone with a session code can join as a viewer. No verification of intended participants.~~
+
+   **Resolution:** Implemented optional PIN authentication for multiplayer sessions:
+   - Hosts can set an optional 4-8 digit PIN when creating a game
+   - Viewers must enter the correct PIN to join PIN-protected sessions
+   - Added `auth-request`, `auth-success`, and `auth-failure` message types with Zod validation
+   - PIN is transmitted during connection handshake and validated by host before accepting viewer
+   - Incorrect PIN attempts result in immediate connection rejection with error message
+   - PIN-protected sessions show a lock indicator (🔒) in the host's UI
 
 4. ~~**Message Validation**~~ ✅ **RESOLVED**
    ~~Received peer messages are cast without validation:~~
@@ -398,7 +406,7 @@ setJoinCode(e.target.value.toUpperCase().slice(0, 6));
 
 ### Recommendations:
 - ~~Remove solution from viewer's game state (calculate status server-side... or in this case, host-side)~~ ✅ **RESOLVED**
-- Add optional password/PIN for sessions
+- ~~Add optional password/PIN for sessions~~ ✅ **RESOLVED**
 - ~~Implement message schema validation using a library like Zod~~ ✅ **RESOLVED**
 
 ---

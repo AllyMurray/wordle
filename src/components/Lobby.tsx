@@ -1,34 +1,65 @@
 import { useState, type KeyboardEvent, type ChangeEvent } from 'react';
-import { GAME_CONFIG, sanitizeSessionCode, isValidSessionCode } from '../types';
+import { GAME_CONFIG, sanitizeSessionCode, isValidSessionCode, sanitizeSessionPin, isValidSessionPin } from '../types';
 import './Lobby.css';
 
 interface LobbyProps {
-  onHost: () => void;
-  onJoin: (code: string) => void;
+  onHost: (pin?: string) => void;
+  onJoin: (code: string, pin?: string) => void;
   onPlaySolo: () => void;
 }
 
 const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
   const [joinCode, setJoinCode] = useState('');
+  const [joinPin, setJoinPin] = useState('');
+  const [hostPin, setHostPin] = useState('');
   const [showJoin, setShowJoin] = useState(false);
+  const [showHost, setShowHost] = useState(false);
 
   const handleJoin = (): void => {
     const sanitizedCode = sanitizeSessionCode(joinCode);
     if (isValidSessionCode(sanitizedCode)) {
-      onJoin(sanitizedCode);
+      // Pass PIN if provided (empty string means no PIN)
+      const sanitizedPin = sanitizeSessionPin(joinPin);
+      onJoin(sanitizedCode, sanitizedPin || undefined);
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
+  const handleHostWithPin = (): void => {
+    // Pass PIN if provided and valid
+    const sanitizedPin = sanitizeSessionPin(hostPin);
+    if (sanitizedPin === '' || isValidSessionPin(sanitizedPin)) {
+      onHost(sanitizedPin || undefined);
+    }
+  };
+
+  const handleJoinKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === 'Enter') {
       handleJoin();
     }
   };
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+  const handleHostKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
+    if (e.key === 'Enter') {
+      handleHostWithPin();
+    }
+  };
+
+  const handleCodeChange = (e: ChangeEvent<HTMLInputElement>): void => {
     // Sanitize input to only allow valid session code characters
     setJoinCode(sanitizeSessionCode(e.target.value));
   };
+
+  const handleJoinPinChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    // Sanitize input to only allow numeric characters
+    setJoinPin(sanitizeSessionPin(e.target.value));
+  };
+
+  const handleHostPinChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    // Sanitize input to only allow numeric characters
+    setHostPin(sanitizeSessionPin(e.target.value));
+  };
+
+  const isHostPinValid = hostPin === '' || isValidSessionPin(hostPin);
 
   return (
     <div className="lobby" role="main" aria-label="Wordle game lobby">
@@ -45,13 +76,68 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
             Play Solo
           </button>
 
-          <button
-            className="lobby-btn host"
-            onClick={onHost}
-            aria-label="Host a multiplayer game"
-          >
-            Host Game
-          </button>
+          {!showHost ? (
+            <button
+              className="lobby-btn host"
+              onClick={() => setShowHost(true)}
+              aria-label="Host a multiplayer game"
+            >
+              Host Game
+            </button>
+          ) : (
+            <div
+              className="join-input-container"
+              role="group"
+              aria-label="Host game form"
+            >
+              <label htmlFor="host-pin" className="sr-only">
+                Optional: Set a {GAME_CONFIG.SESSION_PIN_MIN_LENGTH}-{GAME_CONFIG.SESSION_PIN_MAX_LENGTH} digit PIN
+              </label>
+              <input
+                id="host-pin"
+                type="text"
+                inputMode="numeric"
+                className="join-input pin-input"
+                placeholder={`PIN (optional, ${GAME_CONFIG.SESSION_PIN_MIN_LENGTH}-${GAME_CONFIG.SESSION_PIN_MAX_LENGTH} digits)`}
+                value={hostPin}
+                onChange={handleHostPinChange}
+                onKeyDown={handleHostKeyDown}
+                maxLength={GAME_CONFIG.SESSION_PIN_MAX_LENGTH}
+                autoFocus
+                aria-describedby="host-pin-hint"
+              />
+              <span id="host-pin-hint" className="sr-only">
+                {hostPin.length > 0
+                  ? `${hostPin.length} digits entered. ${isHostPinValid ? 'Valid PIN.' : `PIN must be ${GAME_CONFIG.SESSION_PIN_MIN_LENGTH}-${GAME_CONFIG.SESSION_PIN_MAX_LENGTH} digits.`}`
+                  : 'Leave empty for no PIN protection.'}
+              </span>
+              {hostPin.length > 0 && !isHostPinValid && (
+                <span className="pin-hint">
+                  PIN must be {GAME_CONFIG.SESSION_PIN_MIN_LENGTH}-{GAME_CONFIG.SESSION_PIN_MAX_LENGTH} digits
+                </span>
+              )}
+              <div className="join-actions">
+                <button
+                  className="lobby-btn join-confirm"
+                  onClick={handleHostWithPin}
+                  disabled={!isHostPinValid}
+                  aria-label={hostPin ? 'Host game with PIN protection' : 'Host game without PIN'}
+                >
+                  {hostPin ? 'Host with PIN' : 'Host'}
+                </button>
+                <button
+                  className="lobby-btn cancel"
+                  onClick={() => {
+                    setShowHost(false);
+                    setHostPin('');
+                  }}
+                  aria-label="Cancel hosting game"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {!showJoin ? (
             <button
@@ -76,14 +162,32 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
                 className="join-input"
                 placeholder={`Enter ${GAME_CONFIG.SESSION_CODE_LENGTH}-digit code`}
                 value={joinCode}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
+                onChange={handleCodeChange}
+                onKeyDown={handleJoinKeyDown}
                 maxLength={GAME_CONFIG.SESSION_CODE_LENGTH}
                 autoFocus
                 aria-describedby="join-code-hint"
               />
               <span id="join-code-hint" className="sr-only">
                 {joinCode.length} of {GAME_CONFIG.SESSION_CODE_LENGTH} characters entered
+              </span>
+              <label htmlFor="join-pin" className="sr-only">
+                Enter PIN if required by host
+              </label>
+              <input
+                id="join-pin"
+                type="text"
+                inputMode="numeric"
+                className="join-input pin-input"
+                placeholder="PIN (if required)"
+                value={joinPin}
+                onChange={handleJoinPinChange}
+                onKeyDown={handleJoinKeyDown}
+                maxLength={GAME_CONFIG.SESSION_PIN_MAX_LENGTH}
+                aria-describedby="join-pin-hint"
+              />
+              <span id="join-pin-hint" className="sr-only">
+                {joinPin.length > 0 ? `${joinPin.length} digits entered` : 'Leave empty if no PIN is required'}
               </span>
               <div className="join-actions">
                 <button
@@ -99,6 +203,7 @@ const Lobby = ({ onHost, onJoin, onPlaySolo }: LobbyProps) => {
                   onClick={() => {
                     setShowJoin(false);
                     setJoinCode('');
+                    setJoinPin('');
                   }}
                   aria-label="Cancel joining game"
                 >

@@ -13,6 +13,7 @@ function App() {
     isViewer,
     partnerConnected,
     sessionCode,
+    sessionPin,
     connectionStatus,
     session: {
       guesses,
@@ -84,6 +85,11 @@ function App() {
             <div className="session-info">
               <span className="session-label">Share code:</span>
               <span className="session-code">{sessionCode}</span>
+              {sessionPin && (
+                <span className="session-pin-indicator" title={`PIN: ${sessionPin}`}>
+                  🔒
+                </span>
+              )}
               {partnerConnected ? (
                 <span className="partner-status connected">Partner connected</span>
               ) : (

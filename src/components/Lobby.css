@@ -124,6 +124,22 @@
   border-color: #538d4e;
 }
 
+.join-input.pin-input {
+  font-size: 1.2rem;
+  letter-spacing: 0.3rem;
+}
+
+.join-input.pin-input::placeholder {
+  font-size: 0.9rem;
+  letter-spacing: 0.05rem;
+}
+
+.pin-hint {
+  color: #b59f3b;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 .join-actions {
   display: flex;
   gap: 12px;

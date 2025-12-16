@@ -10,6 +10,11 @@ export const GAME_CONFIG = {
   SESSION_CODE_LENGTH: 6,
   SESSION_CODE_CHARS: 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', // Excludes ambiguous characters (0, O, 1, I)
 
+  // Session PIN settings (optional authentication)
+  SESSION_PIN_MIN_LENGTH: 4,
+  SESSION_PIN_MAX_LENGTH: 8,
+  SESSION_PIN_CHARS: '0123456789', // Numeric PIN only
+
   // UI timing (in milliseconds)
   SHAKE_DURATION_MS: 500,
   HOST_RETRY_DELAY_MS: 100,
@@ -43,6 +48,35 @@ export const isValidSessionCode = (code: string): boolean => {
     return false;
   }
   return code.split('').every((char) => GAME_CONFIG.SESSION_CODE_CHARS.includes(char));
+};
+
+/**
+ * Sanitize a session PIN input by removing non-numeric characters.
+ */
+export const sanitizeSessionPin = (input: string): string => {
+  return input
+    .split('')
+    .filter((char) => GAME_CONFIG.SESSION_PIN_CHARS.includes(char))
+    .join('')
+    .slice(0, GAME_CONFIG.SESSION_PIN_MAX_LENGTH);
+};
+
+/**
+ * Validate that a session PIN is within valid length range (or empty for no PIN).
+ */
+export const isValidSessionPin = (pin: string): boolean => {
+  // Empty PIN is valid (no authentication)
+  if (pin === '') {
+    return true;
+  }
+  // If set, PIN must be within length bounds and numeric only
+  if (
+    pin.length < GAME_CONFIG.SESSION_PIN_MIN_LENGTH ||
+    pin.length > GAME_CONFIG.SESSION_PIN_MAX_LENGTH
+  ) {
+    return false;
+  }
+  return pin.split('').every((char) => GAME_CONFIG.SESSION_PIN_CHARS.includes(char));
 };
 
 // Network resilience constants
@@ -136,12 +170,13 @@ export interface PendingSuggestion {
 export interface UseMultiplayerReturn {
   role: MultiplayerRole;
   sessionCode: string;
+  sessionPin: string;
   connectionStatus: ConnectionStatus;
   errorMessage: string;
   partnerConnected: boolean;
   pendingSuggestion: PendingSuggestion | null;
-  hostGame: () => void;
-  joinGame: (code: string) => void;
+  hostGame: (pin?: string) => void;
+  joinGame: (code: string, pin?: string) => void;
   leaveSession: () => void;
   sendGameState: (state: GameState) => void;
   onGameStateReceived: (callback: (state: ViewerGameState) => void) => void;
@@ -233,6 +268,23 @@ const PongMessageSchema = z.object({
   timestamp: z.number(),
 });
 
+// Schema for authentication request (viewer sends PIN to host)
+const AuthRequestMessageSchema = z.object({
+  type: z.literal('auth-request'),
+  pin: z.string(),
+});
+
+// Schema for authentication success (host approves connection)
+const AuthSuccessMessageSchema = z.object({
+  type: z.literal('auth-success'),
+});
+
+// Schema for authentication failure (host rejects connection)
+const AuthFailureMessageSchema = z.object({
+  type: z.literal('auth-failure'),
+  reason: z.string(),
+});
+
 // Union schema for all peer messages
 export const PeerMessageSchema = z.discriminatedUnion('type', [
   RequestStateMessageSchema,
@@ -244,6 +296,9 @@ export const PeerMessageSchema = z.discriminatedUnion('type', [
   AckMessageSchema,
   PingMessageSchema,
   PongMessageSchema,
+  AuthRequestMessageSchema,
+  AuthSuccessMessageSchema,
+  AuthFailureMessageSchema,
 ]);
 
 // Inferred PeerMessage type from schema
