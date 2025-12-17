@@ -31,6 +31,10 @@ export const GAME_CONFIG = {
 
   // Message ID generation
   MESSAGE_ID_RANDOM_LENGTH: 7,
+
+  // UI display settings
+  /** Minimum width percentage for distribution bars to ensure visibility */
+  MIN_BAR_WIDTH_PERCENT: 7,
 } as const;
 
 /**
