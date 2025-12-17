@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { GameStatistics } from '../types';
+import { GAME_CONFIG, type GameStatistics } from '../types';
 import './Stats.css';
 
 interface StatsProps {
@@ -90,7 +90,7 @@ const Stats = memo(function Stats({
                 <div className="distribution-bar-container">
                   <div
                     className={`distribution-bar ${isLastGuess ? 'highlight' : ''}`}
-                    style={{ width: `${Math.max(percentage, 7)}%` }}
+                    style={{ width: `${Math.max(percentage, GAME_CONFIG.MIN_BAR_WIDTH_PERCENT)}%` }}
                   >
                     <span className="distribution-count">{count}</span>
                   </div>
