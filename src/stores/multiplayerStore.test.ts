@@ -91,32 +91,38 @@ const createMockPeerInstance = () => {
   return mockPeer;
 };
 
-// Mock PeerJS with a proper constructor class
-vi.mock('peerjs', () => {
-  return {
-    default: class MockPeer {
-      id: string;
-      connect: ReturnType<typeof vi.fn>;
-      destroy: ReturnType<typeof vi.fn>;
-      on: ReturnType<typeof vi.fn>;
-      _handlers: MockPeerEventHandlers;
-      _triggerOpen: () => void;
-      _triggerConnection: (conn: DataConnection) => void;
-      _triggerError: (err: { type: string; message?: string }) => void;
+// Create a mock Peer class that will be returned by loadPeerJS
+class MockPeerClass {
+  id: string;
+  connect: ReturnType<typeof vi.fn>;
+  destroy: ReturnType<typeof vi.fn>;
+  on: ReturnType<typeof vi.fn>;
+  _handlers: MockPeerEventHandlers;
+  _triggerOpen: () => void;
+  _triggerConnection: (conn: DataConnection) => void;
+  _triggerError: (err: { type: string; message?: string }) => void;
 
-      constructor() {
-        const instance = createMockPeerInstance();
-        this.id = instance.id;
-        this.connect = instance.connect;
-        this.destroy = instance.destroy;
-        this.on = instance.on;
-        this._handlers = instance._handlers;
-        this._triggerOpen = instance._triggerOpen;
-        this._triggerConnection = instance._triggerConnection;
-        this._triggerError = instance._triggerError;
-        mockPeerInstance = instance;
-      }
-    },
+  constructor() {
+    const instance = createMockPeerInstance();
+    this.id = instance.id;
+    this.connect = instance.connect;
+    this.destroy = instance.destroy;
+    this.on = instance.on;
+    this._handlers = instance._handlers;
+    this._triggerOpen = instance._triggerOpen;
+    this._triggerConnection = instance._triggerConnection;
+    this._triggerError = instance._triggerError;
+    mockPeerInstance = instance;
+  }
+}
+
+// Mock the peerConnection module to intercept loadPeerJS
+vi.mock('./peerConnection', async (importOriginal) => {
+  const original = await importOriginal<typeof import('./peerConnection')>();
+  return {
+    ...original,
+    // Override loadPeerJS to return our mock class immediately
+    loadPeerJS: vi.fn(() => Promise.resolve(MockPeerClass as unknown as typeof import('peerjs').default)),
   };
 });
 
@@ -126,6 +132,12 @@ import {
   registerGameStateCallback,
   registerSuggestionResponseCallback,
 } from './multiplayerStore';
+
+// Helper to wait for async PeerJS loading to complete
+// Uses vi.runAllTimersAsync() to handle both timers and microtasks
+const flushAsyncOperations = async () => {
+  await vi.runAllTimersAsync();
+};
 
 describe('multiplayerStore', () => {
   beforeEach(() => {
@@ -191,11 +203,16 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().role).toBe('viewer');
     });
 
-    it('should set connectionStatus to connected when peer opens', () => {
+    it('should set connectionStatus to connected when peer opens', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      // Wait for async PeerJS loading
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -241,11 +258,15 @@ describe('multiplayerStore', () => {
       expect(state.sessionPin).toBe('1234');
     });
 
-    it('should set status to connected when peer opens', () => {
+    it('should set status to connected when peer opens', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       // Simulate peer connection opening
@@ -258,11 +279,15 @@ describe('multiplayerStore', () => {
       expect(state.sessionCode).toBeTruthy();
     });
 
-    it('should set partnerConnected when viewer connects without PIN', () => {
+    it('should set partnerConnected when viewer connects without PIN', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame(); // No PIN
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -306,11 +331,15 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().pendingSuggestion).toBe(null);
     });
 
-    it('should handle PIN authentication for viewers', () => {
+    it('should handle PIN authentication for viewers', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame('1234');
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -339,11 +368,15 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().partnerConnected).toBe(true);
     });
 
-    it('should reject viewer with incorrect PIN', () => {
+    it('should reject viewer with incorrect PIN', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame('1234');
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -371,11 +404,15 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().partnerConnected).toBe(false);
     });
 
-    it('should handle peer error with unavailable-id by retrying', () => {
+    it('should handle peer error with unavailable-id by retrying', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -393,11 +430,15 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().connectionStatus).toBe('connecting');
     });
 
-    it('should set error status on other peer errors', () => {
+    it('should set error status on other peer errors', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -526,11 +567,15 @@ describe('multiplayerStore', () => {
       }
     });
 
-    it('should handle peer-unavailable error', () => {
+    it('should handle peer-unavailable error', async () => {
       const { joinGame } = useMultiplayerStore.getState();
 
       act(() => {
         joinGame('ABCDEF-abc123');
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -576,11 +621,15 @@ describe('multiplayerStore', () => {
   });
 
   describe('suggestion handling (host)', () => {
-    it('should receive suggestion from viewer', () => {
+    it('should receive suggestion from viewer', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -604,11 +653,15 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().pendingSuggestion).toEqual({ word: 'HELLO' });
     });
 
-    it('should clear suggestion when viewer clears it', () => {
+    it('should clear suggestion when viewer clears it', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -639,11 +692,15 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().pendingSuggestion).toBe(null);
     });
 
-    it('should accept suggestion and return the word', () => {
+    it('should accept suggestion and return the word', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -673,11 +730,15 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().pendingSuggestion).toBe(null);
     });
 
-    it('should reject suggestion and clear it', () => {
+    it('should reject suggestion and clear it', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -882,11 +943,15 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().pendingSuggestion).toBe(null);
     });
 
-    it('should handle ping/pong messages', () => {
+    it('should handle ping/pong messages', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -917,11 +982,15 @@ describe('multiplayerStore', () => {
       }
     });
 
-    it('should send acknowledgment for suggest-word messages', () => {
+    it('should send acknowledgment for suggest-word messages', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -957,11 +1026,15 @@ describe('multiplayerStore', () => {
   });
 
   describe('connection close handling', () => {
-    it('should set partnerConnected to false when viewer disconnects', () => {
+    it('should set partnerConnected to false when viewer disconnects', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
@@ -987,11 +1060,15 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().partnerConnected).toBe(false);
     });
 
-    it('should clear pending suggestion when viewer disconnects', () => {
+    it('should clear pending suggestion when viewer disconnects', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
       act(() => {
         hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
       });
 
       act(() => {
