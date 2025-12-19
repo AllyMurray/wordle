@@ -16,7 +16,7 @@ import {
   sanitizeSessionPin,
   isValidSessionPin,
 } from '../types';
-import type { DataConnection, InternalConnectionState } from './peerConnection';
+import type { DataConnection, InternalConnectionState, RateLimitState } from './peerConnection';
 import {
   createInternalState,
   loadPeerJS,
@@ -33,6 +33,13 @@ import {
   startHeartbeat,
   validatePeerMessage,
   createViewerState,
+  createRateLimitState,
+  checkConnectionRateLimit,
+  recordConnectionAttempt,
+  checkAuthRateLimit,
+  recordFailedAuthAttempt,
+  clearAuthRateLimit,
+  resetRateLimitState,
 } from './peerConnection';
 
 interface MultiplayerState {
@@ -108,6 +115,12 @@ interface MultiplayerState {
 const internal: InternalConnectionState = createInternalState();
 
 /**
+ * Rate limiting state for connection attempts.
+ * Prevents brute-force attacks on sessions and PINs.
+ */
+const rateLimitState: RateLimitState = createRateLimitState();
+
+/**
  * Zustand store for multiplayer state and P2P connection handling.
  *
  * Benefits over previous useMultiplayer hook:
@@ -124,6 +137,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
     // Host a new game session
     const hostGame = (pin?: string): void => {
       cleanup(internal);
+      // Reset rate limiting state for fresh session
+      resetRateLimitState(rateLimitState);
       const sanitizedPin = pin ? sanitizeSessionPin(pin) : '';
       internal.sessionPinInternal = sanitizedPin;
 
@@ -191,7 +206,27 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               }
 
               if (message.type === 'auth-request') {
+                const peerId = conn.peer;
+
+                // Check if this peer is rate-limited due to too many failed auth attempts
+                const authRateCheck = checkAuthRateLimit(rateLimitState, peerId);
+                if (!authRateCheck.allowed) {
+                  const retrySeconds = Math.ceil(authRateCheck.retryAfterMs / 1000);
+                  try {
+                    conn.send({
+                      type: 'auth-failure',
+                      reason: `Too many failed attempts. Try again in ${retrySeconds} seconds.`,
+                    } as PeerMessage);
+                    setTimeout(() => conn.close(), 100);
+                  } catch (err) {
+                    console.warn('Error sending auth failure:', err);
+                  }
+                  return;
+                }
+
                 if (internal.sessionPinInternal === '' || message.pin === internal.sessionPinInternal) {
+                  // Clear any previous failed attempts on successful auth
+                  clearAuthRateLimit(rateLimitState, peerId);
                   try {
                     conn.send({ type: 'auth-success' } as PeerMessage);
                     connectionAuthenticated = true;
@@ -200,8 +235,13 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                     console.warn('Error sending auth success:', err);
                   }
                 } else {
+                  // Record failed auth attempt
+                  const isBlocked = recordFailedAuthAttempt(rateLimitState, peerId);
+                  const reason = isBlocked
+                    ? 'Too many failed attempts. Please try again later.'
+                    : 'Incorrect PIN';
                   try {
-                    conn.send({ type: 'auth-failure', reason: 'Incorrect PIN' } as PeerMessage);
+                    conn.send({ type: 'auth-failure', reason } as PeerMessage);
                     setTimeout(() => conn.close(), 100);
                   } catch (err) {
                     console.warn('Error sending auth failure:', err);
@@ -537,6 +577,17 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
     // Join an existing game session
     const joinGame = (code: string, pin?: string): void => {
+      // Check rate limiting for connection attempts
+      const rateCheck = checkConnectionRateLimit(rateLimitState);
+      if (!rateCheck.allowed) {
+        const retrySeconds = Math.ceil(rateCheck.retryAfterMs / 1000);
+        set({
+          connectionStatus: 'error',
+          errorMessage: `Too many connection attempts. Please wait ${retrySeconds} seconds.`,
+        });
+        return;
+      }
+
       const sanitizedCode = sanitizeSessionCode(code);
       if (!isValidSessionCode(sanitizedCode)) {
         set({
@@ -554,6 +605,9 @@ export const useMultiplayerStore = create<MultiplayerState>()(
         });
         return;
       }
+
+      // Record this connection attempt
+      recordConnectionAttempt(rateLimitState);
 
       cleanup(internal);
       set({ sessionCode: sanitizedCode, sessionPin: sanitizedPin });
@@ -589,6 +643,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
         cleanup(internal);
         internal.sessionPinInternal = '';
         internal.viewerPinInternal = '';
+        // Reset rate limiting state when leaving session
+        resetRateLimitState(rateLimitState);
         set({
           role: null,
           sessionCode: '',
