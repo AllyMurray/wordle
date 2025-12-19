@@ -5,6 +5,7 @@ import Keyboard from './components/Keyboard';
 import Lobby from './components/Lobby';
 import ScreenReaderAnnouncement from './components/ScreenReaderAnnouncement';
 import Stats from './components/Stats';
+import ThemeToggle from './components/ThemeToggle';
 import { useGameSession } from './hooks/useGameSession';
 import { useStatsStore, useUIStore } from './stores';
 import { useGameAnnouncements } from './hooks/useGameAnnouncements';
@@ -171,13 +172,16 @@ function App() {
             ← Back
           </button>
           <h1>Wordle</h1>
-          <button
-            className="stats-btn"
-            onClick={openStats}
-            aria-label="View statistics"
-          >
-            Stats
-          </button>
+          <div className="header-actions">
+            <ThemeToggle />
+            <button
+              className="stats-btn"
+              onClick={openStats}
+              aria-label="View statistics"
+            >
+              Stats
+            </button>
+          </div>
         </div>
       </header>
 

@@ -1,6 +1,6 @@
 .row {
   display: flex;
-  gap: 5px;
+  gap: var(--space-1);
 }
 
 .row.shake {

@@ -1,5 +1,6 @@
 import { memo, useState, type KeyboardEvent, type ChangeEvent } from 'react';
 import { GAME_CONFIG, sanitizeSessionCode, isValidSessionCode, sanitizeSessionPin, isValidSessionPin, parseSessionCode } from '../types';
+import ThemeToggle from './ThemeToggle';
 import './Lobby.css';
 
 interface LobbyProps {
@@ -65,6 +66,9 @@ const Lobby = memo(({ onHost, onJoin, onPlaySolo, initialJoinCode }: LobbyProps)
 
   return (
     <div className="lobby" role="main" aria-label="Wordle game lobby">
+      <div className="lobby-theme-toggle">
+        <ThemeToggle />
+      </div>
       <div className="lobby-content">
         <h1 className="lobby-title">Wordle</h1>
         <p className="lobby-subtitle">Play together with a partner</p>
