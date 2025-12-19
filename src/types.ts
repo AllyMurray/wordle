@@ -206,6 +206,18 @@ export const NETWORK_CONFIG = {
   // Message acknowledgment settings
   ACK_TIMEOUT_MS: 5000,
   MAX_RETRY_ATTEMPTS: 3,
+
+  // Rate limiting settings (prevents brute-force attacks)
+  /** Maximum connection attempts allowed within the time window */
+  RATE_LIMIT_MAX_ATTEMPTS: 5,
+  /** Time window in milliseconds for rate limiting (60 seconds) */
+  RATE_LIMIT_WINDOW_MS: 60000,
+  /** Cooldown period in milliseconds when rate limit is exceeded (30 seconds) */
+  RATE_LIMIT_COOLDOWN_MS: 30000,
+  /** Maximum failed auth attempts before blocking (for PIN brute-force prevention) */
+  MAX_FAILED_AUTH_ATTEMPTS: 3,
+  /** Auth block duration in milliseconds (2 minutes) */
+  AUTH_BLOCK_DURATION_MS: 120000,
 } as const;
 
 // Tile and letter status types

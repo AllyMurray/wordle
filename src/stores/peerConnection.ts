@@ -309,3 +309,137 @@ export const createViewerState = (state: GameState): ViewerGameState => ({
 
 // Re-export validatePeerMessage for use in multiplayerStore
 export { validatePeerMessage };
+
+// ============================================
+// Rate Limiting for Connection Attempts
+// ============================================
+
+/**
+ * Tracks connection attempt timestamps and failed auth attempts for rate limiting.
+ * Used to prevent brute-force attacks on sessions and PINs.
+ */
+export interface RateLimitState {
+  /** Timestamps of recent connection attempts (for viewer join rate limiting) */
+  connectionAttempts: number[];
+  /** Timestamp when rate limit cooldown ends (0 if not in cooldown) */
+  rateLimitCooldownEnd: number;
+  /** Map of peer IDs to failed auth attempt counts (for host PIN protection) */
+  failedAuthAttempts: Map<string, { count: number; blockedUntil: number }>;
+}
+
+/**
+ * Create initial rate limit state.
+ */
+export const createRateLimitState = (): RateLimitState => ({
+  connectionAttempts: [],
+  rateLimitCooldownEnd: 0,
+  failedAuthAttempts: new Map(),
+});
+
+/**
+ * Check if a connection attempt is allowed (for viewer joining).
+ * Returns { allowed: true } or { allowed: false, retryAfterMs: number }.
+ */
+export const checkConnectionRateLimit = (
+  state: RateLimitState
+): { allowed: true } | { allowed: false; retryAfterMs: number } => {
+  const now = Date.now();
+
+  // Check if in cooldown
+  if (state.rateLimitCooldownEnd > now) {
+    return { allowed: false, retryAfterMs: state.rateLimitCooldownEnd - now };
+  }
+
+  // Clean up old attempts outside the window
+  state.connectionAttempts = state.connectionAttempts.filter(
+    (timestamp) => now - timestamp < NETWORK_CONFIG.RATE_LIMIT_WINDOW_MS
+  );
+
+  // Check if under the limit
+  if (state.connectionAttempts.length < NETWORK_CONFIG.RATE_LIMIT_MAX_ATTEMPTS) {
+    return { allowed: true };
+  }
+
+  // Rate limit exceeded - enter cooldown
+  state.rateLimitCooldownEnd = now + NETWORK_CONFIG.RATE_LIMIT_COOLDOWN_MS;
+  return { allowed: false, retryAfterMs: NETWORK_CONFIG.RATE_LIMIT_COOLDOWN_MS };
+};
+
+/**
+ * Record a connection attempt (for viewer joining).
+ */
+export const recordConnectionAttempt = (state: RateLimitState): void => {
+  state.connectionAttempts.push(Date.now());
+};
+
+/**
+ * Check if a peer is blocked due to failed auth attempts (for host PIN protection).
+ * Returns { allowed: true } or { allowed: false, retryAfterMs: number }.
+ */
+export const checkAuthRateLimit = (
+  state: RateLimitState,
+  peerId: string
+): { allowed: true } | { allowed: false; retryAfterMs: number } => {
+  const now = Date.now();
+  const peerState = state.failedAuthAttempts.get(peerId);
+
+  if (!peerState) {
+    return { allowed: true };
+  }
+
+  // Check if block has expired
+  if (peerState.blockedUntil > 0 && peerState.blockedUntil <= now) {
+    // Block expired, reset state
+    state.failedAuthAttempts.delete(peerId);
+    return { allowed: true };
+  }
+
+  // Check if currently blocked
+  if (peerState.blockedUntil > now) {
+    return { allowed: false, retryAfterMs: peerState.blockedUntil - now };
+  }
+
+  return { allowed: true };
+};
+
+/**
+ * Record a failed auth attempt from a peer (for host PIN protection).
+ * Returns true if the peer is now blocked.
+ */
+export const recordFailedAuthAttempt = (
+  state: RateLimitState,
+  peerId: string
+): boolean => {
+  const now = Date.now();
+  let peerState = state.failedAuthAttempts.get(peerId);
+
+  if (!peerState) {
+    peerState = { count: 0, blockedUntil: 0 };
+    state.failedAuthAttempts.set(peerId, peerState);
+  }
+
+  peerState.count++;
+
+  if (peerState.count >= NETWORK_CONFIG.MAX_FAILED_AUTH_ATTEMPTS) {
+    peerState.blockedUntil = now + NETWORK_CONFIG.AUTH_BLOCK_DURATION_MS;
+    return true;
+  }
+
+  return false;
+};
+
+/**
+ * Clear auth rate limit state for a peer (called on successful auth).
+ */
+export const clearAuthRateLimit = (state: RateLimitState, peerId: string): void => {
+  state.failedAuthAttempts.delete(peerId);
+};
+
+/**
+ * Reset all rate limiting state.
+ */
+export const resetRateLimitState = (state: RateLimitState): void => {
+  state.connectionAttempts = [];
+  state.rateLimitCooldownEnd = 0;
+  state.failedAuthAttempts.clear();
+};

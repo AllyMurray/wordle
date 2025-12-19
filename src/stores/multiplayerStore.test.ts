@@ -1110,4 +1110,195 @@ describe('multiplayerStore', () => {
       expect(selectors.usePendingSuggestion).toBeDefined();
     });
   });
+
+  describe('rate limiting', () => {
+    it('should rate limit rapid join attempts', () => {
+      const { joinGame } = useMultiplayerStore.getState();
+
+      // Make 5 rapid join attempts (the rate limit)
+      for (let i = 0; i < 5; i++) {
+        act(() => {
+          useMultiplayerStore.setState({
+            connectionStatus: 'disconnected',
+            errorMessage: '',
+          });
+          joinGame('ABCDEF-abc123');
+        });
+      }
+
+      // Reset state and try again - should be rate limited
+      act(() => {
+        useMultiplayerStore.setState({
+          connectionStatus: 'disconnected',
+          errorMessage: '',
+        });
+        joinGame('ABCDEF-abc123');
+      });
+
+      const state = useMultiplayerStore.getState();
+      expect(state.connectionStatus).toBe('error');
+      expect(state.errorMessage).toContain('Too many connection attempts');
+    });
+
+    it('should allow join after rate limit cooldown', () => {
+      const { joinGame, leaveSession } = useMultiplayerStore.getState();
+
+      // Trigger rate limit
+      for (let i = 0; i < 6; i++) {
+        act(() => {
+          useMultiplayerStore.setState({
+            connectionStatus: 'disconnected',
+            errorMessage: '',
+          });
+          joinGame('ABCDEF-abc123');
+        });
+      }
+
+      // Verify rate limited
+      expect(useMultiplayerStore.getState().errorMessage).toContain('Too many connection attempts');
+
+      // Leave session resets rate limiting
+      act(() => {
+        leaveSession();
+      });
+
+      // Should be allowed again
+      act(() => {
+        joinGame('ABCDEF-abc123');
+      });
+
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('connecting');
+    });
+
+    it('should block peer after too many failed auth attempts', async () => {
+      const { hostGame } = useMultiplayerStore.getState();
+
+      act(() => {
+        hostGame('1234');
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+      });
+
+      const mockViewerConn = createMockConnection();
+      // Set a peer ID for tracking
+      (mockViewerConn as unknown as { peer: string }).peer = 'attacker-peer';
+
+      act(() => {
+        mockPeerInstance?._triggerConnection(mockViewerConn as unknown as DataConnection);
+      });
+
+      act(() => {
+        mockViewerConn._triggerOpen();
+      });
+
+      // Send 3 failed auth attempts
+      for (let i = 0; i < 3; i++) {
+        act(() => {
+          mockViewerConn._triggerData({ type: 'auth-request', pin: 'wrong' });
+        });
+      }
+
+      // Check the last response indicates blocking
+      const lastAuthCall = mockViewerConn.send.mock.calls
+        .filter((call) => call[0]?.type === 'auth-failure')
+        .pop();
+
+      expect(lastAuthCall).toBeDefined();
+      expect(lastAuthCall?.[0]?.reason).toContain('Too many failed attempts');
+    });
+
+    it('should clear auth rate limit on successful authentication', async () => {
+      const { hostGame } = useMultiplayerStore.getState();
+
+      act(() => {
+        hostGame('1234');
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+      });
+
+      const mockViewerConn = createMockConnection();
+      (mockViewerConn as unknown as { peer: string }).peer = 'user-peer';
+
+      act(() => {
+        mockPeerInstance?._triggerConnection(mockViewerConn as unknown as DataConnection);
+      });
+
+      act(() => {
+        mockViewerConn._triggerOpen();
+      });
+
+      // Send 2 failed auth attempts (not enough to block)
+      for (let i = 0; i < 2; i++) {
+        act(() => {
+          mockViewerConn._triggerData({ type: 'auth-request', pin: 'wrong' });
+        });
+      }
+
+      // Now send correct PIN
+      act(() => {
+        mockViewerConn._triggerData({ type: 'auth-request', pin: '1234' });
+      });
+
+      // Should have received auth-success
+      const authSuccessCall = mockViewerConn.send.mock.calls.find(
+        (call) => call[0]?.type === 'auth-success'
+      );
+      expect(authSuccessCall).toBeDefined();
+      expect(useMultiplayerStore.getState().partnerConnected).toBe(true);
+    });
+
+    it('should reset rate limiting when hosting new game', async () => {
+      const { joinGame, leaveSession, hostGame } = useMultiplayerStore.getState();
+
+      // Trigger rate limit on join attempts
+      for (let i = 0; i < 6; i++) {
+        act(() => {
+          useMultiplayerStore.setState({
+            connectionStatus: 'disconnected',
+            errorMessage: '',
+          });
+          joinGame('ABCDEF-abc123');
+        });
+      }
+
+      // Verify rate limited
+      expect(useMultiplayerStore.getState().errorMessage).toContain('Too many connection attempts');
+
+      // Leave and host a new game - should reset rate limiting
+      act(() => {
+        leaveSession();
+      });
+
+      act(() => {
+        hostGame();
+      });
+
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      // Now try joining again - should work because rate limit was reset
+      act(() => {
+        leaveSession();
+      });
+
+      act(() => {
+        joinGame('ABCDEF-abc123');
+      });
+
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('connecting');
+    });
+  });
 });
