@@ -495,38 +495,82 @@ npm test
 npm run test:watch
 ```
 
-### Test Coverage
+### Testing Strategy
 
-The `useWordle` hook has comprehensive test coverage:
+The project uses a comprehensive testing approach with **240 tests** across 11 test files:
 
-- Initial state validation
-- Letter input handling
-- Backspace functionality
-- Word submission and validation
-- Win/lose conditions
-- Letter status algorithm (including duplicate letter edge cases)
-- Keyboard status tracking
-- Game state persistence
-- Viewer mode behavior
+| Category | Tests | Coverage |
+|----------|-------|----------|
+| **Store Tests** | 88 | All Zustand stores (game, multiplayer, stats, UI) |
+| **Component Tests** | 82 | Tile, Row, Board, Keyboard, Stats components |
+| **Hook Tests** | 41 | useGameSession orchestration hook |
+| **Integration Tests** | 29 | End-to-end user flows |
+
+### Test Categories
+
+#### 1. Store Tests (`src/stores/*.test.ts`)
+
+Unit tests for Zustand stores covering:
+- **gameStore**: Letter status algorithm, guess submission, win/lose conditions, duplicate letter handling
+- **multiplayerStore**: P2P connection flow, message handling, authentication, reconnection
+- **statsStore**: Game recording, streak tracking, persistence
+- **uiStore**: Game mode, modal state, theme management
+
+#### 2. Component Tests (`src/components/*.test.tsx`)
+
+UI component tests covering:
+- **Tile**: Empty, filled, and status states; animation delays; accessibility labels
+- **Row**: Current input, submitted guesses, shake animation
+- **Board**: Grid rendering, guess display, accessibility
+- **Keyboard**: Key rendering, status colors, click handling, disabled state
+- **Stats**: Statistics display, distribution bars, modal behavior
+
+#### 3. Hook Tests (`src/hooks/*.test.ts`)
+
+Tests for the main orchestration hook:
+- Initial state values
+- Game actions (play solo, host, join, leave, new game)
+- Keyboard handling for host and viewer modes
+- Suggestion workflow (send, accept, reject)
+- Game state synchronization
+
+#### 4. Integration Tests (`src/integration/*.test.ts`)
+
+Lightweight end-to-end tests simulating real user flows:
+
+**Solo Game Flow:**
+- Complete winning/losing games
+- Letter status tracking across guesses
+- Invalid word rejection
+- New game after completion
+
+**Multiplayer Flow:**
+- Host/join with optional PIN
+- Suggestion handling (viewer types, host accepts/rejects)
+- Connection status display
+- Session leaving and cleanup
+
+**Statistics Flow:**
+- Recording wins/losses
+- Guess distribution tracking
+- Streak management
+- Stats persistence and reset
 
 ### Example Test
 
 ```typescript
 it('should handle duplicate letters correctly', () => {
-  const { result } = renderHook(() => useWordle());
+  const { result } = renderHook(() => useGameSession());
 
-  // Set solution to APPLE
-  act(() => result.current.setGameState({ solution: 'APPLE' }));
+  act(() => result.current.handlePlaySolo());
 
-  // Guess PAPER
-  'PAPER'.split('').forEach(letter => {
-    act(() => result.current.handleKeyPress(letter));
-  });
-  act(() => result.current.handleKeyPress('ENTER'));
+  // Guess PAPER against solution APPLE
+  submitWord(result, 'PAPER');
 
-  // Verify status: P(present), A(present), P(correct), E(correct), R(absent)
-  const guess = result.current.guesses[0];
-  expect(guess.statuses).toEqual(['present', 'present', 'correct', 'correct', 'absent']);
+  // P(present), A(present), P(correct), E(correct), R(absent)
+  expect(result.current.guesses[0].status).toEqual([
+    'present', 'present', 'correct', 'correct', 'absent'
+  ]);
 });
 ```
 
