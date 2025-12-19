@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react';
+import { useLatest } from './useLatest';
 import { WORDS } from '../data/words';
 import {
   useGameStore,
@@ -171,14 +172,22 @@ export const useGameSession = (): UseGameSessionReturn => {
     }
   }, [isHost, partnerConnected, sendGameState, getGameState]);
 
+  // Ref to hold latest sync context - avoids stale closures without adding dependencies
+  const syncContextRef = useLatest({
+    isHost,
+    partnerConnected,
+    sendGameState,
+    getGameState,
+  });
+
   // Send game state updates when game state changes (host)
   useEffect(() => {
+    const { isHost, partnerConnected, sendGameState, getGameState } =
+      syncContextRef.current;
     if (isHost && partnerConnected) {
       sendGameState(getGameState());
     }
-    // Only trigger on actual game state changes, not on every render
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solution, guesses, currentGuess, gameOver, won, message]);
+  }, [solution, guesses, currentGuess, gameOver, won, message, syncContextRef]);
 
   // Handle key press (both host and viewer)
   const handleKeyPress = useCallback(
