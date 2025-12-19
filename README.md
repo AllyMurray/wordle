@@ -136,6 +136,7 @@ src/
 │   ├── index.ts         # Store exports
 │   ├── gameStore.ts     # Core game state
 │   ├── multiplayerStore.ts # P2P connection state
+│   ├── peerConnection.ts # Lazy-loaded PeerJS module
 │   ├── statsStore.ts    # Statistics with persistence
 │   └── uiStore.ts       # UI state (modals, game mode)
 ├── hooks/
@@ -427,6 +428,38 @@ flowchart TD
 | `Keyboard` | 30 key buttons; only re-render when keyboard status changes |
 | `Lobby` | Form inputs shouldn't trigger re-renders from game state changes |
 | `ScreenReaderAnnouncement` | Minimal DOM updates for accessibility |
+
+### Lazy Loading (Code Splitting)
+
+PeerJS (~100KB) is dynamically imported only when multiplayer features are used:
+
+```typescript
+// peerConnection.ts
+export const loadPeerJS = async () => {
+  if (PeerClass) return PeerClass;  // Return cached module
+  const module = await import('peerjs');
+  PeerClass = module.default;
+  return PeerClass;
+};
+
+// multiplayerStore.ts
+const hostGame = () => {
+  set({ connectionStatus: 'connecting' });  // UI updates immediately
+  loadPeerJS().then((Peer) => {
+    // PeerJS loads on demand, then connection starts
+    const peer = new Peer(peerId);
+  });
+};
+```
+
+**Bundle Impact:**
+
+| Bundle | Size | When Loaded |
+|--------|------|-------------|
+| Main | 308 KB (94 KB gzipped) | Initial page load |
+| PeerJS chunk | 116 KB (32 KB gzipped) | On "Host Game" or "Join Game" |
+
+This saves ~85KB for users who only play solo games.
 
 ### Other Optimizations
 
