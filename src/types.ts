@@ -38,15 +38,30 @@ export const GAME_CONFIG = {
 } as const;
 
 /**
+ * Generate cryptographically secure random characters from a character set.
+ * Uses crypto.getRandomValues() for security-sensitive random number generation.
+ */
+export const secureRandomString = (chars: string, length: number): string => {
+  const randomValues = new Uint32Array(length);
+  crypto.getRandomValues(randomValues);
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    // Use modulo to map random value to character index
+    // Uint32 provides enough entropy to avoid modulo bias for small character sets
+    result += chars.charAt(randomValues[i]! % chars.length);
+  }
+  return result;
+};
+
+/**
  * Generate a random peer secret (lowercase hex string).
+ * Uses cryptographically secure random number generation.
  */
 export const generatePeerSecret = (): string => {
-  const chars = GAME_CONFIG.PEER_SECRET_CHARS;
-  let secret = '';
-  for (let i = 0; i < GAME_CONFIG.PEER_SECRET_LENGTH; i++) {
-    secret += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return secret;
+  return secureRandomString(
+    GAME_CONFIG.PEER_SECRET_CHARS,
+    GAME_CONFIG.PEER_SECRET_LENGTH
+  );
 };
 
 /**

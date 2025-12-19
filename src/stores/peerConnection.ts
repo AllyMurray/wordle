@@ -22,6 +22,7 @@ import {
   GAME_CONFIG,
   generatePeerSecret,
   createFullSessionCode,
+  secureRandomString,
 } from '../types';
 
 // Re-export DataConnection type for use in multiplayerStore
@@ -48,14 +49,12 @@ export const generateMessageId = (): string => {
   return `${Date.now()}-${Math.random().toString(36).substring(2, 2 + GAME_CONFIG.MESSAGE_ID_RANDOM_LENGTH)}`;
 };
 
-// Generate the human-readable part of the session code
+// Generate the human-readable part of the session code using crypto.getRandomValues()
 const generateReadableCode = (): string => {
-  const chars = GAME_CONFIG.SESSION_CODE_CHARS;
-  let code = '';
-  for (let i = 0; i < GAME_CONFIG.SESSION_CODE_LENGTH; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+  return secureRandomString(
+    GAME_CONFIG.SESSION_CODE_CHARS,
+    GAME_CONFIG.SESSION_CODE_LENGTH
+  );
 };
 
 // Generate a full session code with unpredictable peer secret
