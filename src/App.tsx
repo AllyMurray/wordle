@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Board from './components/Board';
+import ErrorBoundary from './components/ErrorBoundary';
 import Keyboard from './components/Keyboard';
 import Lobby from './components/Lobby';
 import ScreenReaderAnnouncement from './components/ScreenReaderAnnouncement';
@@ -182,68 +183,73 @@ function App() {
 
       {/* Connection status for multiplayer */}
       {gameMode === 'multiplayer' && (
-        <div className="connection-status">
-          {isHost && (
-            <div className="session-info">
-              <span className="session-label">Share code:</span>
-              <span className="session-code">{sessionCode}</span>
-              {sessionPin && (
-                <span className="session-pin-indicator" title={`PIN: ${sessionPin}`}>
-                  🔒
-                </span>
-              )}
-              <div className="share-buttons">
-                <button
-                  className="share-btn copy"
-                  onClick={handleCopyLink}
-                  aria-label="Copy game link to clipboard"
-                  title="Copy link"
-                >
-                  {copyFeedback ? 'Copied!' : 'Copy Link'}
-                </button>
-                <button
-                  className="share-btn whatsapp"
-                  onClick={handleWhatsAppShare}
-                  aria-label="Share game link via WhatsApp"
-                  title="Share on WhatsApp"
-                >
-                  WhatsApp
-                </button>
+        <ErrorBoundary
+          compact
+          message="Connection status unavailable. The game may still work."
+        >
+          <div className="connection-status">
+            {isHost && (
+              <div className="session-info">
+                <span className="session-label">Share code:</span>
+                <span className="session-code">{sessionCode}</span>
+                {sessionPin && (
+                  <span className="session-pin-indicator" title={`PIN: ${sessionPin}`}>
+                    🔒
+                  </span>
+                )}
+                <div className="share-buttons">
+                  <button
+                    className="share-btn copy"
+                    onClick={handleCopyLink}
+                    aria-label="Copy game link to clipboard"
+                    title="Copy link"
+                  >
+                    {copyFeedback ? 'Copied!' : 'Copy Link'}
+                  </button>
+                  <button
+                    className="share-btn whatsapp"
+                    onClick={handleWhatsAppShare}
+                    aria-label="Share game link via WhatsApp"
+                    title="Share on WhatsApp"
+                  >
+                    WhatsApp
+                  </button>
+                </div>
+                {partnerConnected ? (
+                  <span className="partner-status connected">Partner connected</span>
+                ) : (
+                  <span className="partner-status waiting">Waiting for partner...</span>
+                )}
               </div>
-              {partnerConnected ? (
-                <span className="partner-status connected">Partner connected</span>
-              ) : (
-                <span className="partner-status waiting">Waiting for partner...</span>
-              )}
-            </div>
-          )}
-          {isViewer && (
-            <div className="session-info">
-              <span className="viewer-label">Playing with partner</span>
-              {connectionStatus === 'connecting' && (
-                <span className="partner-status waiting">Connecting...</span>
-              )}
-              {connectionStatus === 'connected' && !suggestionStatus && (
-                <span className="partner-status connected">Type a word to suggest</span>
-              )}
-              {suggestionStatus === 'pending' && (
-                <span className="partner-status waiting">Waiting for host...</span>
-              )}
-              {suggestionStatus === 'accepted' && (
-                <span className="partner-status connected">Suggestion accepted!</span>
-              )}
-              {suggestionStatus === 'rejected' && (
-                <span className="partner-status error">Suggestion rejected</span>
-              )}
-              {suggestionStatus === 'invalid' && (
-                <span className="partner-status error">Not in word list</span>
-              )}
-              {connectionStatus === 'error' && (
-                <span className="partner-status error">{errorMessage}</span>
-              )}
-            </div>
-          )}
-        </div>
+            )}
+            {isViewer && (
+              <div className="session-info">
+                <span className="viewer-label">Playing with partner</span>
+                {connectionStatus === 'connecting' && (
+                  <span className="partner-status waiting">Connecting...</span>
+                )}
+                {connectionStatus === 'connected' && !suggestionStatus && (
+                  <span className="partner-status connected">Type a word to suggest</span>
+                )}
+                {suggestionStatus === 'pending' && (
+                  <span className="partner-status waiting">Waiting for host...</span>
+                )}
+                {suggestionStatus === 'accepted' && (
+                  <span className="partner-status connected">Suggestion accepted!</span>
+                )}
+                {suggestionStatus === 'rejected' && (
+                  <span className="partner-status error">Suggestion rejected</span>
+                )}
+                {suggestionStatus === 'invalid' && (
+                  <span className="partner-status error">Not in word list</span>
+                )}
+                {connectionStatus === 'error' && (
+                  <span className="partner-status error">{errorMessage}</span>
+                )}
+              </div>
+            )}
+          </div>
+        </ErrorBoundary>
       )}
 
       <main className="main">
@@ -281,40 +287,50 @@ function App() {
           </div>
         )}
 
-        <Board
-          guesses={guesses}
-          currentGuess={isViewer ? viewerGuess : currentGuess}
-          maxGuesses={maxGuesses}
-          wordLength={wordLength}
-          shake={shake}
-        />
+        <ErrorBoundary
+          title="Game Board Error"
+          message="The game board encountered an error. Click 'Try Again' to recover or reload the page."
+        >
+          <Board
+            guesses={guesses}
+            currentGuess={isViewer ? viewerGuess : currentGuess}
+            maxGuesses={maxGuesses}
+            wordLength={wordLength}
+            shake={shake}
+          />
 
-        {gameOver && !isViewer && (
-          <button
-            className="play-again"
-            onClick={handleNewGame}
-            aria-label="Start a new game"
-          >
-            Play Again
-          </button>
-        )}
+          {gameOver && !isViewer && (
+            <button
+              className="play-again"
+              onClick={handleNewGame}
+              aria-label="Start a new game"
+            >
+              Play Again
+            </button>
+          )}
 
-        <Keyboard
-          onKeyPress={handleKeyPress}
-          keyboardStatus={getKeyboardStatus()}
-          disabled={gameOver}
-        />
+          <Keyboard
+            onKeyPress={handleKeyPress}
+            keyboardStatus={getKeyboardStatus()}
+            disabled={gameOver}
+          />
+        </ErrorBoundary>
       </main>
 
       {/* Statistics modal */}
-      <Stats
-        stats={stats}
-        winPercentage={winPercentage}
-        maxDistributionValue={maxDistributionValue}
-        isOpen={isStatsOpen}
-        onClose={closeStats}
-        lastGuessCount={won && gameOver ? guesses.length : undefined}
-      />
+      <ErrorBoundary
+        compact
+        message="Unable to display statistics. Try closing and reopening."
+      >
+        <Stats
+          stats={stats}
+          winPercentage={winPercentage}
+          maxDistributionValue={maxDistributionValue}
+          isOpen={isStatsOpen}
+          onClose={closeStats}
+          lastGuessCount={won && gameOver ? guesses.length : undefined}
+        />
+      </ErrorBoundary>
     </div>
   );
 }

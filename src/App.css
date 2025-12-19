@@ -397,6 +397,42 @@
   color: white;
 }
 
+/* Compact Error Boundary styles (for inline sections) */
+.error-boundary-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  background-color: #1a1a1b;
+  border: 1px solid #3a3a3c;
+  border-radius: 8px;
+  margin: 8px 0;
+}
+
+.error-message-compact {
+  color: #818384;
+  font-size: 0.9rem;
+  text-align: center;
+  margin: 0 0 12px 0;
+}
+
+.error-btn-compact {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  background-color: #3a3a3c;
+  color: #818384;
+  transition: all 0.2s ease;
+}
+
+.error-btn-compact:hover {
+  background-color: #4a4a4c;
+  color: white;
+}
+
 .error-btn:active {
   transform: scale(0.98);
 }
