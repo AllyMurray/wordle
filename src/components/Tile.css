@@ -1,40 +1,40 @@
 .tile {
   width: 62px;
   height: 62px;
-  border: 2px solid #3a3a3c;
+  border: 2px solid var(--color-border-primary);
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 2rem;
+  font-size: var(--font-size-3xl);
   font-weight: bold;
   text-transform: uppercase;
-  color: white;
+  color: var(--color-text-primary);
   box-sizing: border-box;
   user-select: none;
 }
 
 .tile.filled {
-  border-color: #565758;
-  animation: pop 0.1s ease-in-out;
+  border-color: var(--color-border-secondary);
+  animation: pop var(--transition-fast);
 }
 
 .tile.correct {
-  background-color: #538d4e;
-  border-color: #538d4e;
+  background-color: var(--color-correct);
+  border-color: var(--color-correct);
   animation: flip 0.5s ease forwards;
   animation-delay: var(--tile-delay, 0ms);
 }
 
 .tile.present {
-  background-color: #b59f3b;
-  border-color: #b59f3b;
+  background-color: var(--color-present);
+  border-color: var(--color-present);
   animation: flip 0.5s ease forwards;
   animation-delay: var(--tile-delay, 0ms);
 }
 
 .tile.absent {
-  background-color: #3a3a3c;
-  border-color: #3a3a3c;
+  background-color: var(--tile-bg-absent);
+  border-color: var(--tile-bg-absent);
   animation: flip 0.5s ease forwards;
   animation-delay: var(--tile-delay, 0ms);
 }

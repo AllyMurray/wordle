@@ -2,12 +2,12 @@
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #121213;
+  background-color: var(--color-bg-primary);
 }
 
 .header {
-  border-bottom: 1px solid #3a3a3c;
-  padding: 10px;
+  border-bottom: 1px solid var(--color-border-primary);
+  padding: var(--space-3);
 }
 
 .header-content {
@@ -20,46 +20,52 @@
 
 .header h1 {
   margin: 0;
-  font-size: 2.2rem;
+  font-size: var(--font-size-4xl);
   font-weight: bold;
   letter-spacing: 0.2rem;
   text-transform: uppercase;
   text-align: center;
-  color: white;
+  color: var(--color-text-primary);
   flex: 1;
 }
 
 .back-btn {
   background: none;
   border: none;
-  color: #818384;
-  font-size: 1rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
 }
 
 .back-btn:hover {
-  background-color: #3a3a3c;
-  color: white;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .stats-btn {
   background: none;
   border: none;
-  color: #818384;
-  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
   cursor: pointer;
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
   min-width: 70px;
 }
 
 .stats-btn:hover {
-  background-color: #3a3a3c;
-  color: white;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
 }
 
 .main {
@@ -68,7 +74,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 0;
+  padding: var(--space-5) 0;
   max-width: 500px;
   margin: 0 auto;
   width: 100%;
@@ -79,36 +85,36 @@
   top: 80px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: white;
-  color: black;
-  padding: 14px 20px;
-  border-radius: 4px;
+  background-color: var(--message-bg);
+  color: var(--message-text);
+  padding: 14px var(--space-5);
+  border-radius: var(--radius-sm);
   font-weight: bold;
-  font-size: 0.9rem;
-  z-index: 100;
-  animation: fadeIn 0.2s ease;
+  font-size: var(--font-size-base);
+  z-index: var(--z-dropdown);
+  animation: fadeIn var(--transition-base);
 }
 
 .message.won {
-  background-color: #538d4e;
-  color: white;
+  background-color: var(--color-correct);
+  color: var(--color-text-primary);
 }
 
 .play-again {
-  background-color: #538d4e;
-  color: white;
+  background-color: var(--color-correct);
+  color: var(--color-text-primary);
   border: none;
-  padding: 16px 32px;
-  font-size: 1.1rem;
+  padding: var(--space-4) var(--space-8);
+  font-size: var(--font-size-lg);
   font-weight: bold;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  margin: 20px 0;
-  transition: background-color 0.2s ease;
+  margin: var(--space-5) 0;
+  transition: background-color var(--transition-base);
 }
 
 .play-again:hover {
-  background-color: #4a7c44;
+  background-color: var(--color-correct-hover);
 }
 
 .play-again:active {
@@ -128,37 +134,37 @@
 
 /* Connection status styles */
 .connection-status {
-  background-color: #1a1a1b;
-  border-bottom: 1px solid #3a3a3c;
-  padding: 10px 20px;
+  background-color: var(--color-bg-secondary);
+  border-bottom: 1px solid var(--color-border-primary);
+  padding: var(--space-3) var(--space-5);
 }
 
 .session-info {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .session-label {
-  color: #818384;
-  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
 }
 
 .session-code {
-  background-color: #3a3a3c;
-  color: #b59f3b;
-  padding: 6px 12px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 1.1rem;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-present);
+  padding: 6px var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-lg);
   font-weight: bold;
   letter-spacing: 0.2rem;
 }
 
 .session-pin-indicator {
-  font-size: 0.9rem;
+  font-size: var(--font-size-base);
   cursor: help;
   filter: drop-shadow(0 0 2px rgba(181, 159, 59, 0.5));
 }
@@ -166,36 +172,36 @@
 /* Share buttons */
 .share-buttons {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .share-btn {
   border: none;
-  padding: 6px 12px;
+  padding: 6px var(--space-3);
   font-size: 0.8rem;
   font-weight: bold;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-base);
 }
 
 .share-btn.copy {
-  background-color: #3a3a3c;
-  color: #818384;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
 }
 
 .share-btn.copy:hover {
-  background-color: #4a4a4c;
-  color: white;
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
 }
 
 .share-btn.whatsapp {
-  background-color: #25d366;
+  background-color: var(--color-whatsapp);
   color: white;
 }
 
 .share-btn.whatsapp:hover {
-  background-color: #1da851;
+  background-color: var(--color-whatsapp-hover);
 }
 
 .share-btn:active {
@@ -203,30 +209,30 @@
 }
 
 .viewer-label {
-  color: white;
-  font-size: 0.9rem;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
   font-weight: bold;
 }
 
 .partner-status {
-  font-size: 0.85rem;
-  padding: 4px 10px;
-  border-radius: 12px;
+  font-size: var(--font-size-sm);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-lg);
 }
 
 .partner-status.connected {
   background-color: rgba(83, 141, 78, 0.2);
-  color: #538d4e;
+  color: var(--color-correct);
 }
 
 .partner-status.waiting {
   background-color: rgba(181, 159, 59, 0.2);
-  color: #b59f3b;
+  color: var(--color-present);
 }
 
 .partner-status.error {
   background-color: rgba(255, 100, 100, 0.2);
-  color: #ff6464;
+  color: var(--color-error);
 }
 
 /* Suggestion panel styles */
@@ -234,14 +240,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   background-color: rgba(181, 159, 59, 0.15);
-  border: 1px solid #b59f3b;
-  border-radius: 8px;
-  padding: 12px 20px;
-  margin-bottom: 16px;
+  border: 1px solid var(--color-present);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-5);
+  margin-bottom: var(--space-4);
   flex-wrap: wrap;
-  animation: slideDown 0.2s ease;
+  animation: slideDown var(--transition-base);
 }
 
 @keyframes slideDown {
@@ -256,17 +262,17 @@
 }
 
 .suggestion-label {
-  color: #b59f3b;
-  font-size: 0.9rem;
+  color: var(--color-present);
+  font-size: var(--font-size-base);
 }
 
 .suggestion-word {
-  background-color: #3a3a3c;
-  color: white;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 1.2rem;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xl);
   font-weight: bold;
   letter-spacing: 0.3rem;
   text-transform: uppercase;
@@ -274,36 +280,36 @@
 
 .suggestion-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .suggestion-btn {
   border: none;
-  padding: 8px 16px;
-  font-size: 0.9rem;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-base);
   font-weight: bold;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all var(--transition-base);
 }
 
 .suggestion-btn.accept {
-  background-color: #538d4e;
-  color: white;
+  background-color: var(--color-correct);
+  color: var(--color-text-primary);
 }
 
 .suggestion-btn.accept:hover {
-  background-color: #4a7c44;
+  background-color: var(--color-correct-hover);
 }
 
 .suggestion-btn.reject {
-  background-color: #3a3a3c;
-  color: #818384;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
 }
 
 .suggestion-btn.reject:hover {
-  background-color: #4a4a4c;
-  color: white;
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
 }
 
 .suggestion-btn:active {
@@ -317,8 +323,8 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background-color: #121213;
-  padding: 20px;
+  background-color: var(--color-bg-primary);
+  padding: var(--space-5);
 }
 
 .error-content {
@@ -327,74 +333,74 @@
 }
 
 .error-content h1 {
-  color: white;
-  font-size: 2rem;
-  margin-bottom: 16px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-3xl);
+  margin-bottom: var(--space-4);
 }
 
 .error-message {
-  color: #818384;
-  font-size: 1.1rem;
-  margin-bottom: 24px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--space-6);
 }
 
 .error-details {
-  background-color: #1a1a1b;
-  border: 1px solid #3a3a3c;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 24px;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-bottom: var(--space-6);
   text-align: left;
 }
 
 .error-details summary {
-  color: #818384;
+  color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 0.9rem;
-  margin-bottom: 8px;
+  font-size: var(--font-size-base);
+  margin-bottom: var(--space-2);
 }
 
 .error-details pre {
-  color: #ff6464;
-  font-size: 0.85rem;
+  color: var(--color-error);
+  font-size: var(--font-size-sm);
   white-space: pre-wrap;
   word-break: break-word;
-  margin: 8px 0 0 0;
+  margin: var(--space-2) 0 0 0;
 }
 
 .error-actions {
   display: flex;
-  gap: 12px;
+  gap: var(--space-3);
   justify-content: center;
 }
 
 .error-btn {
   padding: 14px 28px;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
   font-weight: bold;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   border: none;
-  transition: all 0.2s ease;
+  transition: all var(--transition-base);
 }
 
 .error-btn.primary {
-  background-color: #538d4e;
-  color: white;
+  background-color: var(--color-correct);
+  color: var(--color-text-primary);
 }
 
 .error-btn.primary:hover {
-  background-color: #4a7c44;
+  background-color: var(--color-correct-hover);
 }
 
 .error-btn.secondary {
-  background-color: #3a3a3c;
-  color: #818384;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
 }
 
 .error-btn.secondary:hover {
-  background-color: #4a4a4c;
-  color: white;
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
 }
 
 /* Compact Error Boundary styles (for inline sections) */
@@ -402,35 +408,35 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px;
-  background-color: #1a1a1b;
-  border: 1px solid #3a3a3c;
-  border-radius: 8px;
-  margin: 8px 0;
+  padding: var(--space-4);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-md);
+  margin: var(--space-2) 0;
 }
 
 .error-message-compact {
-  color: #818384;
-  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
   text-align: center;
-  margin: 0 0 12px 0;
+  margin: 0 0 var(--space-3) 0;
 }
 
 .error-btn-compact {
-  padding: 8px 16px;
-  font-size: 0.85rem;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
   font-weight: bold;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   border: none;
-  background-color: #3a3a3c;
-  color: #818384;
-  transition: all 0.2s ease;
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  transition: all var(--transition-base);
 }
 
 .error-btn-compact:hover {
-  background-color: #4a4a4c;
-  color: white;
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
 }
 
 .error-btn:active {

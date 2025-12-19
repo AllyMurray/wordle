@@ -1,8 +1,8 @@
 .keyboard {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
+  gap: var(--space-2);
+  padding: var(--space-3);
   width: 100%;
   max-width: 500px;
 }
@@ -16,19 +16,19 @@
 .key {
   height: 58px;
   min-width: 43px;
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   border: none;
-  border-radius: 4px;
-  background-color: #818384;
-  color: white;
-  font-size: 0.85rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--color-key-default);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
   font-weight: bold;
   cursor: pointer;
   display: flex;
   justify-content: center;
   align-items: center;
   text-transform: uppercase;
-  transition: background-color 0.1s ease;
+  transition: background-color var(--transition-fast);
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -43,19 +43,19 @@
 
 .key.wide {
   min-width: 65px;
-  font-size: 0.75rem;
+  font-size: var(--font-size-xs);
 }
 
 .key.correct {
-  background-color: #538d4e;
+  background-color: var(--color-correct);
 }
 
 .key.present {
-  background-color: #b59f3b;
+  background-color: var(--color-present);
 }
 
 .key.absent {
-  background-color: #3a3a3c;
+  background-color: var(--tile-bg-absent);
 }
 
 .keyboard.disabled {
@@ -71,8 +71,8 @@
   .key {
     height: 50px;
     min-width: 32px;
-    padding: 0 8px;
-    font-size: 0.75rem;
+    padding: 0 var(--space-2);
+    font-size: var(--font-size-xs);
   }
 
   .key.wide {
@@ -81,6 +81,6 @@
   }
 
   .keyboard-row {
-    gap: 4px;
+    gap: var(--space-1);
   }
 }
