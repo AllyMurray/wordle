@@ -7,6 +7,33 @@ import { GAME_CONFIG } from '../types';
 const WORD_LENGTH = GAME_CONFIG.WORD_LENGTH;
 const MAX_GUESSES = GAME_CONFIG.MAX_GUESSES;
 
+// Module-level timeout tracking for cleanup
+let shakeTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * Clears any existing shake timeout and sets a new one.
+ * This prevents memory leaks and ensures only one timeout is active at a time.
+ */
+const setShakeTimeout = (callback: () => void, duration: number): void => {
+  if (shakeTimeoutId !== null) {
+    clearTimeout(shakeTimeoutId);
+  }
+  shakeTimeoutId = setTimeout(() => {
+    shakeTimeoutId = null;
+    callback();
+  }, duration);
+};
+
+/**
+ * Clears any pending shake timeout. Call this when cleaning up the store.
+ */
+export const clearShakeTimeout = (): void => {
+  if (shakeTimeoutId !== null) {
+    clearTimeout(shakeTimeoutId);
+    shakeTimeoutId = null;
+  }
+};
+
 interface GameStoreState {
   // Core game state
   solution: string;
@@ -115,13 +142,13 @@ export const useGameStore = create<GameStoreState>()(
       if (gameOver || isViewer) return false;
       if (currentGuess.length !== WORD_LENGTH) {
         set({ message: 'Not enough letters', shake: true });
-        setTimeout(() => set({ shake: false, message: '' }), GAME_CONFIG.SHAKE_DURATION_MS);
+        setShakeTimeout(() => set({ shake: false, message: '' }), GAME_CONFIG.SHAKE_DURATION_MS);
         return false;
       }
 
       if (!isValidWord(currentGuess)) {
         set({ message: 'Not in word list', shake: true });
-        setTimeout(() => set({ shake: false, message: '' }), GAME_CONFIG.SHAKE_DURATION_MS);
+        setShakeTimeout(() => set({ shake: false, message: '' }), GAME_CONFIG.SHAKE_DURATION_MS);
         return false;
       }
 
@@ -171,6 +198,8 @@ export const useGameStore = create<GameStoreState>()(
 
     // Start a new game
     newGame: () => {
+      // Clear any pending shake timeout to prevent stale state updates
+      clearShakeTimeout();
       set({
         solution: getRandomWord(),
         guesses: [],
