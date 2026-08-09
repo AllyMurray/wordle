@@ -332,6 +332,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               if (
                 messageId &&
                 (message.type === 'suggest-word' ||
+                  message.type === 'clear-suggestion' ||
                   message.type === 'request-state' ||
                   message.type === 'boggle-word')
               ) {
@@ -835,11 +836,12 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       clearSuggestion: () => {
         const { role } = get();
         if (role === 'viewer' && internal.connection?.open) {
-          try {
-            internal.connection.send({ type: 'clear-suggestion' } as PeerMessage);
-          } catch (err) {
-            console.warn('Error clearing suggestion:', err);
-          }
+          sendWithAck(
+            internal,
+            internal.connection,
+            { type: 'clear-suggestion' } as PeerMessage,
+            true
+          );
         }
       },
 
@@ -1055,6 +1057,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 if (
                   messageId &&
                   (message.type === 'suggest-word' ||
+                    message.type === 'clear-suggestion' ||
                     message.type === 'request-state' ||
                     message.type === 'boggle-word')
                 ) {

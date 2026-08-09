@@ -914,10 +914,17 @@ describe('multiplayerStore', () => {
 
       // Viewer clears suggestion
       act(() => {
-        mockViewerConn._triggerData({ type: 'clear-suggestion' });
+        mockViewerConn._triggerData({
+          type: 'clear-suggestion',
+          _messageId: 'clear-suggestion-1',
+        });
       });
 
       expect(useMultiplayerStore.getState().pendingSuggestion).toBe(null);
+      expect(mockViewerConn.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'clear-suggestion-1',
+      });
     });
 
     it('should accept suggestion and return the word', async () => {
@@ -1120,6 +1127,25 @@ describe('multiplayerStore', () => {
       act(() => {
         clearSuggestion();
       });
+    });
+
+    it('sends the clear request with acknowledgment tracking', async () => {
+      act(() => useMultiplayerStore.getState().joinGame('wordle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        useMultiplayerStore.getState().clearSuggestion();
+      });
+
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'clear-suggestion',
+          _messageId: expect.any(String),
+        })
+      );
     });
   });
 
