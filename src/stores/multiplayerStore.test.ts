@@ -1085,12 +1085,44 @@ describe('multiplayerStore', () => {
       if (gameStateCall) {
         const sentMessage = gameStateCall[0] as {
           type: string;
+          revision: number;
           state: { solution?: string; guesses: unknown[]; currentGuess: string };
         };
+        expect(sentMessage.revision).toBe(1);
         expect(sentMessage.state.solution).toBeUndefined();
         expect(sentMessage.state.guesses).toHaveLength(1);
         expect(sentMessage.state.currentGuess).toBe('WO');
       }
+    });
+
+    it('increments the revision for each authoritative state', async () => {
+      act(() => useMultiplayerStore.getState().hostGame('wordle'));
+      await act(async () => flushAsyncOperations());
+      const viewer = createMockConnection(true);
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        mockPeerInstance?._triggerConnection(viewer as unknown as DataConnection);
+        viewer._triggerOpen();
+      });
+
+      const state = {
+        solution: 'CRANE',
+        guesses: [],
+        currentGuess: '',
+        gameOver: false,
+        won: false,
+        message: '',
+      };
+      act(() => {
+        useMultiplayerStore.getState().sendGameState(state);
+        useMultiplayerStore.getState().sendGameState(state);
+      });
+
+      const revisions = viewer.send.mock.calls
+        .map((call) => call[0])
+        .filter((message) => message.type === 'game-state')
+        .map((message) => message.revision);
+      expect(revisions).toEqual([1, 2]);
     });
   });
 
@@ -1266,6 +1298,7 @@ describe('multiplayerStore', () => {
         lastCreatedConnection?._triggerData({ type: 'auth-success' });
         lastCreatedConnection?._triggerData({
           type: 'boggle-state',
+          revision: 1,
           state: boggleState,
           _messageId: 'boggle-state-1',
         });
@@ -1287,6 +1320,7 @@ describe('multiplayerStore', () => {
 
       const message = {
         type: 'boggle-state',
+        revision: 1,
         state: {
           board: {
             grid: [
@@ -1320,6 +1354,56 @@ describe('multiplayerStore', () => {
         messageId: 'retried-state-1',
       });
       expect(lastCreatedConnection?.send).toHaveBeenCalledTimes(4);
+      registerBoggleStateCallback(null);
+    });
+
+    it('ignores an older Boggle snapshot even when it has a new message ID', async () => {
+      const callback = vi.fn();
+      registerBoggleStateCallback(callback);
+      act(() => useMultiplayerStore.getState().joinGame('boggle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      const state = {
+        board: {
+          grid: [
+            ['T', 'E', 'S', 'T'],
+            ['A', 'R', 'E', 'A'],
+            ['G', 'A', 'M', 'E'],
+            ['W', 'O', 'R', 'D'],
+          ],
+          size: 4,
+        },
+        foundWords: [],
+        score: 0,
+        gameOver: false,
+        timeRemaining: 120,
+        timedMode: true,
+      };
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        lastCreatedConnection?._triggerData({
+          type: 'boggle-state',
+          revision: 2,
+          state,
+          _messageId: 'new-state',
+        });
+        lastCreatedConnection?._triggerData({
+          type: 'boggle-state',
+          revision: 1,
+          state: { ...state, score: 99 },
+          _messageId: 'stale-state',
+        });
+      });
+
+      expect(callback).toHaveBeenCalledOnce();
+      expect(callback).toHaveBeenCalledWith(state);
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'stale-state',
+      });
       registerBoggleStateCallback(null);
     });
 

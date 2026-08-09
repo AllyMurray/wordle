@@ -335,6 +335,7 @@ const RequestStateMessageSchema = z.strictObject({
 // Schema for game-state message (sent to viewer, solution hidden)
 const GameStateMessageSchema = z.strictObject({
   type: z.literal('game-state'),
+  revision: z.number().int().nonnegative().safe(),
   state: ViewerGameStateSchema,
   ...MessageMetadataShape,
 });
@@ -422,6 +423,7 @@ const BoggleMultiplayerStateSchema = z.strictObject({
 
 const BoggleStateMessageSchema = z.strictObject({
   type: z.literal('boggle-state'),
+  revision: z.number().int().nonnegative().safe(),
   state: BoggleMultiplayerStateSchema,
   ...MessageMetadataShape,
 });

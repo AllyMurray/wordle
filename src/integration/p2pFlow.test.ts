@@ -68,6 +68,7 @@ describe('Integration: P2P Message Validation', () => {
       { type: 'request-state' },
       {
         type: 'game-state',
+        revision: 1,
         state: {
           guesses: [{ word: 'CRANE', status: ['correct', 'correct', 'correct', 'correct', 'correct'] }],
           currentGuess: 'APP',
@@ -88,6 +89,7 @@ describe('Integration: P2P Message Validation', () => {
       { type: 'auth-failure', reason: 'Incorrect PIN' },
       {
         type: 'boggle-state',
+        revision: 1,
         state: {
           board: {
             grid: [
@@ -145,7 +147,7 @@ describe('Integration: P2P Message Validation', () => {
       message: 'Excellent!',
     };
 
-    const message: PeerMessage = { type: 'game-state', state: validGameState };
+    const message: PeerMessage = { type: 'game-state', revision: 1, state: validGameState };
     const result = PeerMessageSchema.safeParse(message);
     expect(result.success).toBe(true);
   });
@@ -153,6 +155,7 @@ describe('Integration: P2P Message Validation', () => {
   it('should reject invalid letter status values', () => {
     const invalidStatus = {
       type: 'game-state',
+      revision: 1,
       state: {
         guesses: [{ word: 'CRANE', status: ['correct', 'invalid', 'correct', 'correct', 'correct'] }],
         currentGuess: '',
@@ -410,7 +413,7 @@ describe('Integration: P2P Game State Synchronization', () => {
       message: 'Excellent!',
     };
 
-    const message: PeerMessage = { type: 'game-state', state: winningState };
+    const message: PeerMessage = { type: 'game-state', revision: 2, state: winningState };
     const result = validatePeerMessage(message);
 
     expect(result.success).toBe(true);
@@ -436,7 +439,7 @@ describe('Integration: P2P Game State Synchronization', () => {
       message: 'Phew!',
     };
 
-    const message: PeerMessage = { type: 'game-state', state: complexState };
+    const message: PeerMessage = { type: 'game-state', revision: 3, state: complexState };
     const result = validatePeerMessage(message);
 
     expect(result.success).toBe(true);

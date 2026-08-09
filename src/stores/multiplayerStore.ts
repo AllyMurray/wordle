@@ -167,6 +167,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       const sanitizedPin = pin ? sanitizeSessionPin(pin) : '';
       internal.sessionPinInternal = sanitizedPin;
       internal.currentGameId = gameId;
+      internal.wordleStateRevision = 0;
+      internal.boggleStateRevision = 0;
 
       set({
         role: 'host',
@@ -430,6 +432,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
       if (!isReconnect) {
         internal.reconnectAttempts = 0;
+        internal.lastReceivedWordleRevision = -1;
+        internal.lastReceivedBoggleRevision = -1;
         internal.viewerPinInternal = pin;
         internal.currentGameId = gameId;
         set({
@@ -621,8 +625,12 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               }
 
               if (message.type === 'game-state' && internal.onGameStateReceived) {
+                if (message.revision <= internal.lastReceivedWordleRevision) return;
+                internal.lastReceivedWordleRevision = message.revision;
                 internal.onGameStateReceived(message.state);
               } else if (message.type === 'boggle-state' && internal.onBoggleStateReceived) {
+                if (message.revision <= internal.lastReceivedBoggleRevision) return;
+                internal.lastReceivedBoggleRevision = message.revision;
                 internal.onBoggleStateReceived(message.state);
               } else if (
                 (message.type === 'suggestion-accepted' || message.type === 'suggestion-rejected') &&
@@ -791,7 +799,11 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           sendWithAck(
             internal,
             internal.connection,
-            { type: 'game-state', state: viewerState } as PeerMessage,
+            {
+              type: 'game-state',
+              revision: ++internal.wordleStateRevision,
+              state: viewerState,
+            } as PeerMessage,
             true
           );
         }
@@ -815,7 +827,11 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           sendWithAck(
             internal,
             internal.connection,
-            { type: 'boggle-state', state } as PeerMessage,
+            {
+              type: 'boggle-state',
+              revision: ++internal.boggleStateRevision,
+              state,
+            } as PeerMessage,
             true
           );
         }

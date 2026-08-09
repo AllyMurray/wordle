@@ -99,6 +99,10 @@ export interface InternalConnectionState {
   isAuthenticated: boolean;
   lastHeartbeat: number;
   currentGameId: string;
+  wordleStateRevision: number;
+  boggleStateRevision: number;
+  lastReceivedWordleRevision: number;
+  lastReceivedBoggleRevision: number;
   // Callbacks for game state updates (set by useGameSession)
   onGameStateReceived: ((state: ViewerGameState) => void) | null;
   onSuggestionResponse: ((accepted: boolean) => void) | null;
@@ -125,6 +129,10 @@ export const createInternalState = (): InternalConnectionState => ({
   isAuthenticated: false,
   lastHeartbeat: 0,
   currentGameId: '',
+  wordleStateRevision: 0,
+  boggleStateRevision: 0,
+  lastReceivedWordleRevision: -1,
+  lastReceivedBoggleRevision: -1,
   onGameStateReceived: null,
   onSuggestionResponse: null,
   onStateRequested: null,

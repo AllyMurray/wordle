@@ -135,6 +135,7 @@ describe('Session Code Functions', () => {
 describe('peer message validation', () => {
   const validBoggleState = {
     type: 'boggle-state',
+    revision: 1,
     state: {
       board: {
         grid: [
@@ -166,6 +167,7 @@ describe('peer message validation', () => {
     expect(
       validatePeerMessage({
         type: 'game-state',
+        revision: 1,
         state: {
           guesses: [{ word: 'TOO-LONG', status: ['correct'] }],
           currentGuess: '12345',
