@@ -4,14 +4,46 @@ import type { GameStatistics, GameMode } from '../types';
 import { DEFAULT_STATISTICS, recordGameResult, STATS_STORAGE_KEY } from '../types';
 
 interface StatsState {
-  // Statistics data
+  // Wordle statistics data (kept as `stats` for persisted-state compatibility)
   stats: GameStatistics;
+  boggleStats: BoggleStatistics;
 
   // Actions
   recordGame: (won: boolean, guessCount: number, gameMode: Exclude<GameMode, null>) => void;
   recordBoggleGame: (score: number, wordsFound: number, gameMode: Exclude<GameMode, null>) => void;
   resetStats: () => void;
 }
+
+export interface BoggleStatistics {
+  gamesPlayed: number;
+  soloGamesPlayed: number;
+  multiplayerGamesPlayed: number;
+  bestScore: number;
+  mostWords: number;
+  totalScore: number;
+  averageScore: number;
+}
+
+export const DEFAULT_BOGGLE_STATISTICS: BoggleStatistics = {
+  gamesPlayed: 0,
+  soloGamesPlayed: 0,
+  multiplayerGamesPlayed: 0,
+  bestScore: 0,
+  mostWords: 0,
+  totalScore: 0,
+  averageScore: 0,
+};
+
+export const migrateStatsState = (persistedState: unknown) => {
+  const state = persistedState as Partial<
+    Pick<StatsState, 'stats' | 'boggleStats'>
+  >;
+
+  return {
+    stats: state.stats ?? { ...DEFAULT_STATISTICS },
+    boggleStats: state.boggleStats ?? { ...DEFAULT_BOGGLE_STATISTICS },
+  };
+};
 
 /**
  * Zustand store for game statistics with automatic localStorage persistence.
@@ -25,6 +57,7 @@ export const useStatsStore = create<StatsState>()(
   persist(
     (set) => ({
       stats: { ...DEFAULT_STATISTICS },
+      boggleStats: { ...DEFAULT_BOGGLE_STATISTICS },
 
       recordGame: (won, guessCount, gameMode) => {
         set((state) => ({
@@ -32,31 +65,46 @@ export const useStatsStore = create<StatsState>()(
         }));
       },
 
-      // Boggle game recording - just tracks game mode for now
-      // Can be extended later with Boggle-specific stats (best score, most words, etc.)
-      recordBoggleGame: (_score, _wordsFound, gameMode) => {
-        set((state) => ({
-          stats: {
-            ...state.stats,
-            gamesPlayed: state.stats.gamesPlayed + 1,
-            soloGamesPlayed: gameMode === 'solo'
-              ? state.stats.soloGamesPlayed + 1
-              : state.stats.soloGamesPlayed,
-            multiplayerGamesPlayed: gameMode === 'multiplayer'
-              ? state.stats.multiplayerGamesPlayed + 1
-              : state.stats.multiplayerGamesPlayed,
-          },
-        }));
+      recordBoggleGame: (score, wordsFound, gameMode) => {
+        set((state) => {
+          const gamesPlayed = state.boggleStats.gamesPlayed + 1;
+          const totalScore = state.boggleStats.totalScore + score;
+
+          return {
+            boggleStats: {
+              ...state.boggleStats,
+              gamesPlayed,
+              bestScore: Math.max(state.boggleStats.bestScore, score),
+              mostWords: Math.max(state.boggleStats.mostWords, wordsFound),
+              totalScore,
+              averageScore: totalScore / gamesPlayed,
+              soloGamesPlayed: gameMode === 'solo'
+                ? state.boggleStats.soloGamesPlayed + 1
+                : state.boggleStats.soloGamesPlayed,
+              multiplayerGamesPlayed: gameMode === 'multiplayer'
+                ? state.boggleStats.multiplayerGamesPlayed + 1
+                : state.boggleStats.multiplayerGamesPlayed,
+            },
+          };
+        });
       },
 
       resetStats: () => {
-        set({ stats: { ...DEFAULT_STATISTICS } });
+        set({
+          stats: { ...DEFAULT_STATISTICS },
+          boggleStats: { ...DEFAULT_BOGGLE_STATISTICS },
+        });
       },
     }),
     {
       name: STATS_STORAGE_KEY,
-      // Only persist the stats object, not the actions
-      partialize: (state) => ({ stats: state.stats }),
+      version: 1,
+      migrate: migrateStatsState,
+      // Only persist statistics, not actions.
+      partialize: (state) => ({
+        stats: state.stats,
+        boggleStats: state.boggleStats,
+      }),
     }
   )
 );
@@ -65,6 +113,7 @@ export const useStatsStore = create<StatsState>()(
 // Components using these will only re-render when their specific data changes
 
 export const useStats = () => useStatsStore((state) => state.stats);
+export const useBoggleStats = () => useStatsStore((state) => state.boggleStats);
 export const useRecordGame = () => useStatsStore((state) => state.recordGame);
 export const useRecordBoggleGame = () => useStatsStore((state) => state.recordBoggleGame);
 export const useResetStats = () => useStatsStore((state) => state.resetStats);

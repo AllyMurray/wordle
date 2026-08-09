@@ -222,6 +222,7 @@ export const NETWORK_CONFIG = {
   // Message acknowledgment settings
   ACK_TIMEOUT_MS: 5000,
   MAX_RETRY_ATTEMPTS: 3,
+  MAX_RECEIVED_MESSAGE_IDS: 500,
 
   // Rate limiting settings (prevents brute-force attacks)
   /** Maximum connection attempts allowed within the time window */
@@ -262,6 +263,19 @@ export interface ViewerGameState {
   gameOver: boolean;
   won: boolean;
   message: string;
+}
+
+// Host-authoritative Boggle state sent to viewers.
+export interface BoggleMultiplayerState {
+  board: {
+    grid: string[][];
+    size: number;
+  };
+  foundWords: string[];
+  score: number;
+  gameOver: boolean;
+  timeRemaining: number;
+  timedMode: boolean;
 }
 
 // Keyboard status map (letter -> status)
@@ -373,6 +387,30 @@ const AuthFailureMessageSchema = z.object({
   reason: z.string(),
 });
 
+const BoggleBoardSchema = z.object({
+  grid: z.array(z.array(z.string())),
+  size: z.number().int().positive(),
+});
+
+const BoggleMultiplayerStateSchema = z.object({
+  board: BoggleBoardSchema,
+  foundWords: z.array(z.string()),
+  score: z.number().nonnegative(),
+  gameOver: z.boolean(),
+  timeRemaining: z.number().int().nonnegative(),
+  timedMode: z.boolean(),
+});
+
+const BoggleStateMessageSchema = z.object({
+  type: z.literal('boggle-state'),
+  state: BoggleMultiplayerStateSchema,
+});
+
+const BoggleWordMessageSchema = z.object({
+  type: z.literal('boggle-word'),
+  word: z.string().min(3).max(32),
+});
+
 // Union schema for all peer messages
 export const PeerMessageSchema = z.discriminatedUnion('type', [
   RequestStateMessageSchema,
@@ -387,6 +425,8 @@ export const PeerMessageSchema = z.discriminatedUnion('type', [
   AuthRequestMessageSchema,
   AuthSuccessMessageSchema,
   AuthFailureMessageSchema,
+  BoggleStateMessageSchema,
+  BoggleWordMessageSchema,
 ]);
 
 // Inferred PeerMessage type from schema
@@ -496,30 +536,32 @@ export const saveStatistics = (stats: GameStatistics): void => {
   }
 };
 
-// Check if two dates are consecutive days
+const getLocalDateKey = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getCalendarDayNumber = (dateKey: string): number | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) return null;
+
+  const [, year, month, day] = match;
+  if (!year || !month || !day) return null;
+  return Date.UTC(Number(year), Number(month) - 1, Number(day)) / (24 * 60 * 60 * 1000);
+};
+
+// Check if two local calendar dates are consecutive days
 const isConsecutiveDay = (lastDate: string, currentDate: string): boolean => {
-  const last = new Date(lastDate);
-  const current = new Date(currentDate);
-
-  // Reset to start of day for comparison
-  last.setHours(0, 0, 0, 0);
-  current.setHours(0, 0, 0, 0);
-
-  const diffTime = current.getTime() - last.getTime();
-  const diffDays = diffTime / (1000 * 60 * 60 * 24);
-
-  return diffDays === 1;
+  const lastDay = getCalendarDayNumber(lastDate);
+  const currentDay = getCalendarDayNumber(currentDate);
+  return lastDay !== null && currentDay !== null && currentDay - lastDay === 1;
 };
 
 // Check if date is today
 const isToday = (dateStr: string): boolean => {
-  const date = new Date(dateStr);
-  const today = new Date();
-
-  date.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-
-  return date.getTime() === today.getTime();
+  return dateStr === getLocalDateKey(new Date());
 };
 
 // Record a completed game
@@ -529,10 +571,7 @@ export const recordGameResult = (
   guessCount: number,
   gameMode: 'solo' | 'multiplayer'
 ): GameStatistics => {
-  const today = new Date().toISOString().split('T')[0];
-  if (!today) {
-    return stats;
-  }
+  const today = getLocalDateKey(new Date());
 
   const newStats = { ...stats };
 

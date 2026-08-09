@@ -3,7 +3,7 @@
  * Enables offline solo play and app installability.
  */
 
-const BASE_PATH = '/wordle/';
+const BASE_PATH = import.meta.env.BASE_URL;
 
 export function registerServiceWorker(): void {
   if ('serviceWorker' in navigator) {

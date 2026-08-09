@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useLatest } from './useLatest';
 import { useMultiplayerReconnection } from './useMultiplayerReconnection';
+import { useWindowKeyDown } from './useWindowKeyDown';
 import { WORDS } from '../data/words';
 import {
   useGameStore,
@@ -8,6 +9,7 @@ import {
   useUIStore,
   registerGameStateCallback,
   registerSuggestionResponseCallback,
+  registerStateRequestCallback,
   MAX_GUESSES_COUNT,
   WORD_LENGTH_COUNT,
 } from '../stores';
@@ -116,6 +118,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
   const setGameMode = useUIStore((s) => s.setGameMode);
   const suggestionStatus = useUIStore((s) => s.suggestionStatus);
   const setSuggestionStatus = useUIStore((s) => s.setSuggestionStatus);
+  const isStatsOpen = useUIStore((s) => s.isStatsOpen);
 
   const isHost = role === 'host';
   const isViewer = role === 'viewer';
@@ -133,7 +136,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
     (guess: string): void => {
       if (guess.length === WORD_LENGTH_COUNT) {
         if (WORDS.includes(guess.toLowerCase())) {
-          setSuggestionStatus(null);
+          setSuggestionStatus('pending');
           sendSuggestion(guess);
         } else {
           setSuggestionStatus('invalid');
@@ -155,6 +158,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
         clearViewerGuess();
         setSuggestionStatus(null);
       });
+      return () => registerGameStateCallback(null);
     }
   }, [isViewer, setGameState, clearViewerGuess, setSuggestionStatus]);
 
@@ -168,6 +172,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
         }
         setTimeout(() => setSuggestionStatus(null), 1500);
       });
+      return () => registerSuggestionResponseCallback(null);
     }
   }, [isViewer, clearViewerGuess, setSuggestionStatus]);
 
@@ -177,6 +182,14 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
       sendGameState(getGameState());
     }
   }, [isHost, partnerConnected, sendGameState, getGameState]);
+
+  // A reconnecting viewer explicitly asks for a fresh authoritative snapshot.
+  useEffect(() => {
+    if (!isHost) return;
+
+    registerStateRequestCallback(() => sendGameState(getGameState()));
+    return () => registerStateRequestCallback(null);
+  }, [isHost, sendGameState, getGameState]);
 
   // Ref to hold latest sync context - avoids stale closures without adding dependencies
   const syncContextRef = useLatest({
@@ -258,12 +271,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
     [handleKeyPress, viewerGuess, setSuggestionStatus]
   );
 
-  useEffect(() => {
-    if (gameMode) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [handleKeyDown, gameMode]);
+  useWindowKeyDown(gameMode === 'multiplayer' && !isStatsOpen, handleKeyDown);
 
   // Game session action handlers
   const handlePlaySolo = useCallback((): void => {

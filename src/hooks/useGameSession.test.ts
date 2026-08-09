@@ -402,6 +402,7 @@ describe('useGameSession', () => {
       });
 
       expect(sendSuggestionSpy).toHaveBeenCalledWith('APPLE');
+      expect(result.current.suggestionStatus).toBe('pending');
     });
 
     it('should set suggestion status to invalid for non-word', () => {
@@ -558,7 +559,7 @@ describe('useGameSession', () => {
       const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
 
       act(() => {
-        useUIStore.setState({ gameMode: 'solo' });
+        useUIStore.setState({ gameMode: 'multiplayer' });
       });
 
       renderHook(() => useGameSession());
@@ -570,7 +571,7 @@ describe('useGameSession', () => {
       const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
 
       act(() => {
-        useUIStore.setState({ gameMode: 'solo' });
+        useUIStore.setState({ gameMode: 'multiplayer' });
       });
 
       const { unmount } = renderHook(() => useGameSession());
@@ -594,6 +595,18 @@ describe('useGameSession', () => {
       );
       expect(keydownCalls).toHaveLength(0);
     });
+
+    it('should not add keyboard listener while statistics are open', () => {
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+      addEventListenerSpy.mockClear();
+      act(() => useUIStore.setState({ gameMode: 'multiplayer', isStatsOpen: true }));
+
+      renderHook(() => useGameSession());
+
+      expect(
+        addEventListenerSpy.mock.calls.filter((call) => call[0] === 'keydown')
+      ).toHaveLength(0);
+    });
   });
 
   describe('game state callback registration', () => {
@@ -604,9 +617,11 @@ describe('useGameSession', () => {
         useMultiplayerStore.setState({ role: 'viewer' });
       });
 
-      renderHook(() => useGameSession());
+      const { unmount } = renderHook(() => useGameSession());
 
       expect(registerSpy).toHaveBeenCalledWith(expect.any(Function));
+      unmount();
+      expect(registerSpy).toHaveBeenCalledWith(null);
     });
 
     it('should register suggestion response callback for viewer', () => {
@@ -616,9 +631,11 @@ describe('useGameSession', () => {
         useMultiplayerStore.setState({ role: 'viewer' });
       });
 
-      renderHook(() => useGameSession());
+      const { unmount } = renderHook(() => useGameSession());
 
       expect(registerSpy).toHaveBeenCalledWith(expect.any(Function));
+      unmount();
+      expect(registerSpy).toHaveBeenCalledWith(null);
     });
   });
 

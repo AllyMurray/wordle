@@ -15,6 +15,7 @@ import type {
   PeerMessage,
   GameState,
   ViewerGameState,
+  BoggleMultiplayerState,
 } from '../types';
 import {
   validatePeerMessage,
@@ -80,9 +81,12 @@ export interface PendingMessage {
  * - Callbacks and timeouts are implementation details
  */
 export interface InternalConnectionState {
+  /** Invalidates asynchronous work started by an older connection lifecycle. */
+  connectionGeneration: number;
   peer: InstanceType<typeof import('peerjs').default> | null;
   connection: DataConnection | null;
   pendingMessages: Map<string, PendingMessage>;
+  receivedMessageIds: Set<string>;
   heartbeatInterval: ReturnType<typeof setInterval> | null;
   heartbeatTimeout: ReturnType<typeof setTimeout> | null;
   reconnectTimeout: ReturnType<typeof setTimeout> | null;
@@ -97,12 +101,17 @@ export interface InternalConnectionState {
   // Callbacks for game state updates (set by useGameSession)
   onGameStateReceived: ((state: ViewerGameState) => void) | null;
   onSuggestionResponse: ((accepted: boolean) => void) | null;
+  onStateRequested: (() => void) | null;
+  onBoggleStateReceived: ((state: BoggleMultiplayerState) => void) | null;
+  onBoggleWordReceived: ((word: string) => void) | null;
 }
 
 export const createInternalState = (): InternalConnectionState => ({
+  connectionGeneration: 0,
   peer: null,
   connection: null,
   pendingMessages: new Map(),
+  receivedMessageIds: new Set(),
   heartbeatInterval: null,
   heartbeatTimeout: null,
   reconnectTimeout: null,
@@ -116,6 +125,9 @@ export const createInternalState = (): InternalConnectionState => ({
   currentGameId: '',
   onGameStateReceived: null,
   onSuggestionResponse: null,
+  onStateRequested: null,
+  onBoggleStateReceived: null,
+  onBoggleWordReceived: null,
 });
 
 // Helper functions
@@ -144,7 +156,11 @@ export const clearReconnectTimeout = (internal: InternalConnectionState): void =
 };
 
 export const cleanup = (internal: InternalConnectionState): void => {
+  // Invalidate pending dynamic imports, PeerJS callbacks, and delayed retries
+  // before closing the current transport.
+  internal.connectionGeneration++;
   clearPendingMessages(internal);
+  internal.receivedMessageIds.clear();
   stopHeartbeat(internal);
   clearReconnectTimeout(internal);
 
@@ -215,6 +231,9 @@ export const sendWithAck = (
               internal.pendingMessages.delete(messageId);
               onAckTimeout?.();
             }
+          } else {
+            internal.pendingMessages.delete(messageId);
+            onAckTimeout?.();
           }
         } else {
           internal.pendingMessages.delete(messageId);
@@ -252,6 +271,33 @@ export const sendAck = (conn: DataConnection, messageId: string): void => {
   }
 };
 
+/**
+ * Acknowledge an incoming reliable message and return whether its side effects
+ * should run. A lost acknowledgment can cause the sender to replay the same
+ * message, so IDs are retained in a bounded set for receiver-side idempotency.
+ */
+export const acknowledgeIncomingMessage = (
+  internal: InternalConnectionState,
+  conn: DataConnection,
+  messageId: string
+): boolean => {
+  sendAck(conn, messageId);
+
+  if (internal.receivedMessageIds.has(messageId)) {
+    return false;
+  }
+
+  internal.receivedMessageIds.add(messageId);
+  if (internal.receivedMessageIds.size > NETWORK_CONFIG.MAX_RECEIVED_MESSAGE_IDS) {
+    const oldestMessageId = internal.receivedMessageIds.values().next().value;
+    if (oldestMessageId !== undefined) {
+      internal.receivedMessageIds.delete(oldestMessageId);
+    }
+  }
+
+  return true;
+};
+
 export const handleHeartbeat = (internal: InternalConnectionState): void => {
   internal.lastHeartbeat = Date.now();
   if (internal.heartbeatTimeout) {
@@ -273,14 +319,22 @@ export const startHeartbeat = (
       try {
         conn.send({ type: 'ping', timestamp: Date.now() } as PeerMessage);
 
-        internal.heartbeatTimeout = setTimeout(() => {
-          const timeSinceLastHeartbeat = Date.now() - internal.lastHeartbeat;
-          if (timeSinceLastHeartbeat > NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS) {
-            onTimeout();
-          }
-        }, NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS);
+        // Keep one deadline from the first unanswered ping. Replacing it on
+        // every interval would postpone failure forever, while creating a new
+        // timeout each time allows several reconnect attempts to overlap.
+        if (!internal.heartbeatTimeout) {
+          internal.heartbeatTimeout = setTimeout(() => {
+            internal.heartbeatTimeout = null;
+            const timeSinceLastHeartbeat = Date.now() - internal.lastHeartbeat;
+            if (timeSinceLastHeartbeat >= NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS) {
+              stopHeartbeat(internal);
+              onTimeout();
+            }
+          }, NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS);
+        }
       } catch (err) {
         console.warn('Error sending heartbeat ping:', err);
+        stopHeartbeat(internal);
         onTimeout();
       }
     }

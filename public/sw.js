@@ -1,6 +1,7 @@
 // Service Worker for Game Hub PWA
-const CACHE_NAME = 'gamehub-v1';
+const CACHE_NAME = 'gamehub-v2';
 const BASE_PATH = '/gamehub/';
+const BUILD_MANIFEST_URL = BASE_PATH + 'asset-manifest.json';
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -9,13 +10,39 @@ const STATIC_ASSETS = [
   BASE_PATH + 'manifest.json',
   '/gamehub/icons/icon-192.svg',
   '/gamehub/icons/icon-512.svg',
+  '/gamehub/icons/icon-maskable.svg',
 ];
+
+// Vite records every hashed entry, CSS file, and lazy chunk in this manifest.
+// Precaching it makes the complete solo app available during the first install,
+// before a service worker-controlled reload has occurred.
+async function cacheBuildAssets(cache) {
+  try {
+    const response = await fetch(BUILD_MANIFEST_URL, { cache: 'no-store' });
+    if (!response.ok) return;
+
+    const manifest = await response.json();
+    const assetUrls = new Set([BUILD_MANIFEST_URL]);
+    for (const entry of Object.values(manifest)) {
+      if (entry.file) assetUrls.add(BASE_PATH + entry.file);
+      for (const cssFile of entry.css || []) assetUrls.add(BASE_PATH + cssFile);
+      for (const assetFile of entry.assets || []) assetUrls.add(BASE_PATH + assetFile);
+    }
+
+    await cache.addAll([...assetUrls]);
+  } catch (error) {
+    // Development servers do not emit a build manifest. Static shell caching
+    // should still succeed there rather than aborting service worker install.
+    console.warn('Unable to precache build assets:', error);
+  }
+}
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await cache.addAll(STATIC_ASSETS);
+      await cacheBuildAssets(cache);
     })
   );
   // Take control immediately

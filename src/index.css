@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');
+
 * {
   box-sizing: border-box;
 }
@@ -6,8 +8,6 @@
    VELVET ARCADE - Premium Gaming Theme
    A luxurious yet playful word games experience
    ============================================ */
-
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600&display=swap');
 
 :root {
   /* Typography */
@@ -70,6 +70,14 @@
   /* Absent - Contextual (changes with theme) */
   --color-error: #E85A50;
 
+  /* Wordle feedback - separate from the app's coral/amber accent palette */
+  --wordle-correct: #2E7D32;
+  --wordle-correct-hover: #256629;
+  --wordle-correct-glow: rgba(46, 125, 50, 0.3);
+  --wordle-present: #A96500;
+  --wordle-present-hover: #8C5400;
+  --wordle-present-glow: rgba(169, 101, 0, 0.3);
+
   /* Accent - Electric Teal */
   --color-accent: #38BDF8;
   --color-accent-hover: #0EA5E9;
@@ -112,6 +120,8 @@
   --tile-border-empty: rgba(255, 255, 255, 0.15);
   --tile-border-filled: rgba(255, 255, 255, 0.3);
   --tile-bg-absent: #334155;
+  --wordle-absent: #1E293B;
+  --wordle-absent-text: #94A3B8;
   --message-bg: #F1F5F9;
   --message-text: #0B0F14;
 
@@ -152,6 +162,8 @@
   --tile-border-empty: rgba(0, 0, 0, 0.2);
   --tile-border-filled: rgba(0, 0, 0, 0.4);
   --tile-bg-absent: #64748B;
+  --wordle-absent: #64748B;
+  --wordle-absent-text: #F8FAFC;
   --message-bg: #1E293B;
   --message-text: #F1F5F9;
 

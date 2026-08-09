@@ -2,12 +2,19 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBoggleStore } from './store';
 import { useTimerStore } from '../../stores/timerStore';
-import { BoggleBoard, Timer, WordList, AllWordsList } from './components';
+import { BoggleBoard, Timer, WordList, AllWordsList, BoggleLoadingState } from './components';
 import { GameLayout } from '../../components/GameLayout/GameLayout';
 import Lobby from '../../components/Lobby';
 import ErrorBoundary from '../../components/ErrorBoundary';
-import { useMultiplayerStore, useStatsStore } from '../../stores';
+import {
+  registerBoggleStateCallback,
+  registerBoggleWordCallback,
+  registerStateRequestCallback,
+  useMultiplayerStore,
+  useStatsStore,
+} from '../../stores';
 import { useMultiplayerReconnection } from '../../hooks/useMultiplayerReconnection';
+import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';
 import type { GameMode } from '../../types';
 import './BoggleGame.css';
@@ -49,11 +56,15 @@ export default function BoggleGame() {
   const rotateBoard = useBoggleStore((s) => s.rotateBoard);
   const highlightWord = useBoggleStore((s) => s.highlightWord);
   const clearHighlight = useBoggleStore((s) => s.clearHighlight);
+  const clearSelection = useBoggleStore((s) => s.clearSelection);
+  const submitWordByText = useBoggleStore((s) => s.submitWordByText);
+  const applyMultiplayerState = useBoggleStore((s) => s.applyMultiplayerState);
 
   // Timer store state
   const timeRemaining = useTimerStore((s) => s.timeRemaining);
   const startTimer = useTimerStore((s) => s.start);
   const stopTimer = useTimerStore((s) => s.stop);
+  const resetTimer = useTimerStore((s) => s.reset);
 
   // Multiplayer store
   const role = useMultiplayerStore((s) => s.role);
@@ -66,6 +77,8 @@ export default function BoggleGame() {
   const hostGame = useMultiplayerStore((s) => s.hostGame);
   const joinGame = useMultiplayerStore((s) => s.joinGame);
   const leaveSession = useMultiplayerStore((s) => s.leaveSession);
+  const sendBoggleState = useMultiplayerStore((s) => s.sendBoggleState);
+  const sendBoggleWord = useMultiplayerStore((s) => s.sendBoggleWord);
 
   // Stats
   const recordBoggleGame = useStatsStore((s) => s.recordBoggleGame);
@@ -85,6 +98,7 @@ export default function BoggleGame() {
   // Handle loading → playing transition
   useEffect(() => {
     if (gamePhase !== 'loading') return;
+    if (localGameMode === 'multiplayer' && isViewer) return;
 
     let cancelled = false;
 
@@ -107,7 +121,7 @@ export default function BoggleGame() {
     return () => {
       cancelled = true;
     };
-  }, [gamePhase, initGame, startTimer, timedMode]);
+  }, [gamePhase, initGame, startTimer, timedMode, localGameMode, isViewer]);
 
   // Handle playing → gameOver transition when timer reaches zero (only in timed mode)
   // Uses subscription pattern to avoid setState in effect body
@@ -150,6 +164,88 @@ export default function BoggleGame() {
   // Handle page visibility changes for connection restoration
   useMultiplayerReconnection();
 
+  // Viewers wait for the host's authoritative board, score, and timer.
+  useEffect(() => {
+    if (!isViewer) return;
+
+    registerBoggleStateCallback((state) => {
+      applyMultiplayerState(state);
+      resetTimer(state.timeRemaining);
+      setTimedMode(state.timedMode);
+      setGamePhase(state.gameOver ? 'gameOver' : 'playing');
+    });
+
+    return () => registerBoggleStateCallback(null);
+  }, [isViewer, applyMultiplayerState, resetTimer]);
+
+  // The host validates words submitted by the viewer against its own board.
+  useEffect(() => {
+    if (!isHost) return;
+
+    registerBoggleWordCallback((word) => {
+      submitWordByText(word);
+    });
+
+    return () => registerBoggleWordCallback(null);
+  }, [isHost, submitWordByText]);
+
+  // Broadcast host-authoritative state, including the timer, on every change.
+  useEffect(() => {
+    if (
+      !isHost ||
+      !partnerConnected ||
+      localGameMode !== 'multiplayer' ||
+      !board ||
+      (gamePhase !== 'playing' && gamePhase !== 'gameOver')
+    ) {
+      return;
+    }
+
+    sendBoggleState({
+      board,
+      foundWords,
+      score,
+      gameOver: gamePhase === 'gameOver',
+      timeRemaining,
+      timedMode,
+    });
+  }, [
+    isHost,
+    partnerConnected,
+    localGameMode,
+    board,
+    foundWords,
+    score,
+    gamePhase,
+    timeRemaining,
+    timedMode,
+    sendBoggleState,
+  ]);
+
+  // Reconnecting viewers request a fresh snapshot even when the host's
+  // partnerConnected flag was already true for the replaced connection.
+  useEffect(() => {
+    if (!isHost) return;
+
+    registerStateRequestCallback(() => {
+      const state = useBoggleStore.getState();
+      if (!state.board || (gamePhaseRef.current !== 'playing' && gamePhaseRef.current !== 'gameOver')) {
+        return;
+      }
+
+      sendBoggleState({
+        board: state.board,
+        foundWords: state.foundWords,
+        score: state.score,
+        gameOver: gamePhaseRef.current === 'gameOver',
+        timeRemaining: useTimerStore.getState().timeRemaining,
+        timedMode,
+      });
+    });
+
+    return () => registerStateRequestCallback(null);
+  }, [isHost, sendBoggleState, timedMode]);
+
   const handleBack = useCallback(() => {
     stopTimer();
     navigate('/');
@@ -164,6 +260,14 @@ export default function BoggleGame() {
     setGamePhase('lobby');
   }, [stopTimer, resetGame, leaveSession]);
 
+  const handleRouteCleanup = useCallback(() => {
+    stopTimer();
+    resetGame();
+    leaveSession();
+  }, [stopTimer, resetGame, leaveSession]);
+
+  useGameRouteCleanup(handleRouteCleanup);
+
   // Track selected word for highlighting in game over state
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
 
@@ -173,8 +277,16 @@ export default function BoggleGame() {
   }, []);
 
   const handleSubmit = useCallback(() => {
+    if (isViewer) {
+      if (currentWord.length >= 3) {
+        sendBoggleWord(currentWord);
+      }
+      clearSelection();
+      return;
+    }
+
     submitWord();
-  }, [submitWord]);
+  }, [isViewer, currentWord, sendBoggleWord, clearSelection, submitWord]);
 
   // Rotation animation state
   const [rotationAnimation, setRotationAnimation] = useState<'left' | 'right' | null>(null);
@@ -315,7 +427,11 @@ export default function BoggleGame() {
     return (
       <GameLayout gameId="boggle" gameName="Boggle" onBack={handleBackToLobby}>
         <div className="boggle-game">
-          <div className="loading">Loading dictionary...</div>
+          <BoggleLoadingState
+            isMultiplayerViewer={localGameMode === 'multiplayer' && isViewer}
+            connectionStatus={connectionStatus}
+            errorMessage={errorMessage}
+          />
         </div>
       </GameLayout>
     );
@@ -432,7 +548,7 @@ export default function BoggleGame() {
             <button
               className="control-btn rotate-btn"
               onClick={handleRotateLeft}
-              disabled={gamePhase === 'gameOver'}
+              disabled={gamePhase === 'gameOver' || isViewer}
               aria-label="Rotate board left 90 degrees"
               title="Rotate left"
             >
@@ -442,6 +558,7 @@ export default function BoggleGame() {
               <button
                 className="control-btn play-again-btn"
                 onClick={handleNewGame}
+                disabled={isViewer}
                 aria-label="Play again"
               >
                 Play Again
@@ -450,6 +567,7 @@ export default function BoggleGame() {
               <button
                 className="control-btn new-game-btn"
                 onClick={handleNewGame}
+                disabled={isViewer}
                 aria-label="Start a new game"
               >
                 New Game
@@ -458,6 +576,7 @@ export default function BoggleGame() {
               <button
                 className="control-btn end-game-btn"
                 onClick={handleEndGame}
+                disabled={isViewer}
                 aria-label="End current game"
               >
                 End Game
@@ -466,7 +585,7 @@ export default function BoggleGame() {
             <button
               className="control-btn rotate-btn"
               onClick={handleRotateRight}
-              disabled={gamePhase === 'gameOver'}
+              disabled={gamePhase === 'gameOver' || isViewer}
               aria-label="Rotate board right 90 degrees"
               title="Rotate right"
             >

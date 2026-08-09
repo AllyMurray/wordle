@@ -94,6 +94,8 @@ const createMockPeerInstance = () => {
 // Create a mock Peer class that will be returned by loadPeerJS
 class MockPeerClass {
   id: string;
+  open = true;
+  destroyed = false;
   connect: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
   on: ReturnType<typeof vi.fn>;
@@ -131,7 +133,11 @@ import {
   useMultiplayerStore,
   registerGameStateCallback,
   registerSuggestionResponseCallback,
+  registerStateRequestCallback,
+  registerBoggleStateCallback,
+  registerBoggleWordCallback,
 } from './multiplayerStore';
+import { loadPeerJS } from './peerConnection';
 
 // Helper to wait for async PeerJS loading to complete
 // Uses vi.runAllTimersAsync() to handle both timers and microtasks
@@ -308,6 +314,40 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().partnerConnected).toBe(true);
     });
 
+    it('should clear a host partner when heartbeats go unanswered', async () => {
+      act(() => useMultiplayerStore.getState().hostGame('wordle'));
+      await act(async () => flushAsyncOperations());
+
+      const viewer = createMockConnection(true);
+      act(() => {
+        mockPeerInstance?._triggerConnection(viewer as unknown as DataConnection);
+        viewer._triggerOpen();
+      });
+      expect(useMultiplayerStore.getState().partnerConnected).toBe(true);
+
+      act(() => vi.advanceTimersByTime(20000));
+
+      expect(viewer.close).toHaveBeenCalledOnce();
+      expect(useMultiplayerStore.getState().partnerConnected).toBe(false);
+    });
+
+    it('should service an authenticated viewer state request', async () => {
+      const onStateRequested = vi.fn();
+      registerStateRequestCallback(onStateRequested);
+      act(() => useMultiplayerStore.getState().hostGame('wordle'));
+      await act(async () => flushAsyncOperations());
+
+      const viewer = createMockConnection(true);
+      act(() => {
+        mockPeerInstance?._triggerConnection(viewer as unknown as DataConnection);
+        viewer._triggerData({ type: 'request-state', _messageId: 'request-1' });
+      });
+
+      expect(viewer.send).toHaveBeenCalledWith({ type: 'ack', messageId: 'request-1' });
+      expect(onStateRequested).toHaveBeenCalledOnce();
+      registerStateRequestCallback(null);
+    });
+
     it('should clear pending suggestion when new viewer connects', () => {
       act(() => {
         useMultiplayerStore.setState({ pendingSuggestion: { word: 'HELLO' } });
@@ -402,6 +442,64 @@ describe('multiplayerStore', () => {
         reason: 'Incorrect PIN',
       });
       expect(useMultiplayerStore.getState().partnerConnected).toBe(false);
+    });
+
+    it('should keep the active viewer until a replacement authenticates', async () => {
+      act(() => {
+        useMultiplayerStore.getState().hostGame('wordle', '1234');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      const activeViewer = createMockConnection(true);
+      const candidateViewer = createMockConnection(true);
+
+      act(() => {
+        mockPeerInstance?._triggerConnection(activeViewer as unknown as DataConnection);
+        activeViewer._triggerData({ type: 'auth-request', pin: '1234' });
+        useMultiplayerStore.setState({ pendingSuggestion: { word: 'HELLO' } });
+        mockPeerInstance?._triggerConnection(candidateViewer as unknown as DataConnection);
+        candidateViewer._triggerData({ type: 'auth-request', pin: '0000' });
+      });
+
+      expect(activeViewer.close).not.toHaveBeenCalled();
+      expect(useMultiplayerStore.getState().partnerConnected).toBe(true);
+      expect(useMultiplayerStore.getState().pendingSuggestion).toEqual({ word: 'HELLO' });
+
+      act(() => {
+        candidateViewer._triggerData({ type: 'auth-request', pin: '1234' });
+      });
+
+      expect(activeViewer.close).toHaveBeenCalledTimes(1);
+      expect(useMultiplayerStore.getState().pendingSuggestion).toBeNull();
+    });
+
+    it('should rate-limit failed PINs across changing viewer peer IDs', async () => {
+      act(() => {
+        useMultiplayerStore.getState().hostGame('wordle', '1234');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      const candidates = Array.from({ length: 3 }, (_, index) => {
+        const candidate = createMockConnection(true);
+        (candidate as unknown as { peer: string }).peer = `viewer-${index}`;
+        return candidate;
+      });
+
+      for (const candidate of candidates) {
+        act(() => {
+          mockPeerInstance?._triggerConnection(candidate as unknown as DataConnection);
+          candidate._triggerData({ type: 'auth-request', pin: '0000' });
+        });
+      }
+
+      expect(candidates[2]?.send).toHaveBeenCalledWith({
+        type: 'auth-failure',
+        reason: 'Too many failed attempts. Please try again later.',
+      });
     });
 
     it('should handle peer error with unavailable-id by retrying', async () => {
@@ -541,6 +639,33 @@ describe('multiplayerStore', () => {
       }
     });
 
+    it.each(['suggestion-accepted', 'suggestion-rejected'] as const)(
+      'should acknowledge %s messages',
+      async (messageType) => {
+        act(() => {
+          useMultiplayerStore.getState().joinGame('wordle', 'ABCDEF-abc123');
+        });
+        await act(async () => {
+          await flushAsyncOperations();
+        });
+
+        act(() => {
+          mockPeerInstance?._triggerOpen();
+          lastCreatedConnection?._triggerOpen();
+          lastCreatedConnection?._triggerData({ type: 'auth-success' });
+          lastCreatedConnection?._triggerData({
+            type: messageType,
+            _messageId: `response-${messageType}`,
+          });
+        });
+
+        expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+          type: 'ack',
+          messageId: `response-${messageType}`,
+        });
+      }
+    );
+
     it('should set error status on auth failure', () => {
       const { joinGame } = useMultiplayerStore.getState();
 
@@ -586,6 +711,32 @@ describe('multiplayerStore', () => {
       expect(state.connectionStatus).toBe('error');
       expect(state.errorMessage).toBe('Game not found. Check the code and try again.');
     });
+
+    it('should reconnect when a restoration ping throws despite open flags', async () => {
+      act(() => {
+        useMultiplayerStore.getState().joinGame('wordle', 'ABCDEF-abc123');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+      });
+
+      lastCreatedConnection?.send.mockImplementationOnce(() => {
+        throw new Error('stale data channel');
+      });
+
+      act(() => {
+        useMultiplayerStore.getState().restoreViewerConnection();
+      });
+
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('connecting');
+      expect(mockPeerInstance?.destroy).toHaveBeenCalled();
+    });
   });
 
   describe('leaveSession', () => {
@@ -617,6 +768,48 @@ describe('multiplayerStore', () => {
       expect(state.errorMessage).toBe('');
       expect(state.partnerConnected).toBe(false);
       expect(state.pendingSuggestion).toBe(null);
+    });
+
+    it('should ignore PeerJS loading that completes after leaving', async () => {
+      let resolvePeerLoad: ((Peer: typeof import('peerjs').default) => void) | undefined;
+      vi.mocked(loadPeerJS).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolvePeerLoad = resolve;
+          })
+      );
+
+      act(() => {
+        useMultiplayerStore.getState().hostGame('wordle');
+        useMultiplayerStore.getState().leaveSession();
+      });
+
+      resolvePeerLoad?.(MockPeerClass as unknown as typeof import('peerjs').default);
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockPeerInstance).toBeNull();
+      expect(useMultiplayerStore.getState().role).toBeNull();
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('disconnected');
+    });
+
+    it('should cancel a delayed host retry when leaving', async () => {
+      act(() => {
+        useMultiplayerStore.getState().hostGame('wordle');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      act(() => {
+        mockPeerInstance?._triggerError({ type: 'unavailable-id' });
+        useMultiplayerStore.getState().leaveSession();
+        vi.advanceTimersByTime(1000);
+      });
+
+      expect(useMultiplayerStore.getState().role).toBeNull();
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('disconnected');
     });
   });
 
@@ -911,6 +1104,13 @@ describe('multiplayerStore', () => {
 
       expect(() => registerSuggestionResponseCallback(mockCallback)).not.toThrow();
     });
+
+    it('should register and clear Boggle callbacks', () => {
+      expect(() => registerBoggleStateCallback(vi.fn())).not.toThrow();
+      expect(() => registerBoggleWordCallback(vi.fn())).not.toThrow();
+      expect(() => registerBoggleStateCallback(null)).not.toThrow();
+      expect(() => registerBoggleWordCallback(null)).not.toThrow();
+    });
   });
 
   describe('message handling', () => {
@@ -941,6 +1141,115 @@ describe('multiplayerStore', () => {
 
       // State should be unchanged from invalid message
       expect(useMultiplayerStore.getState().pendingSuggestion).toBe(null);
+    });
+
+    it('should deliver and acknowledge viewer Boggle words to the host', async () => {
+      const callback = vi.fn();
+      registerBoggleWordCallback(callback);
+      act(() => {
+        useMultiplayerStore.getState().hostGame('boggle');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      const viewerConnection = createMockConnection();
+      act(() => {
+        mockPeerInstance?._triggerConnection(viewerConnection as unknown as DataConnection);
+        viewerConnection._triggerOpen();
+        viewerConnection._triggerData({
+          type: 'boggle-word',
+          word: 'TEST',
+          _messageId: 'boggle-word-1',
+        });
+      });
+
+      expect(callback).toHaveBeenCalledWith('TEST');
+      expect(viewerConnection.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'boggle-word-1',
+      });
+      registerBoggleWordCallback(null);
+    });
+
+    it('should deliver and acknowledge host Boggle state to the viewer', async () => {
+      const callback = vi.fn();
+      registerBoggleStateCallback(callback);
+      act(() => {
+        useMultiplayerStore.getState().joinGame('boggle', 'ABCDEF-abc123');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      const boggleState = {
+        board: {
+          grid: [
+            ['T', 'E'],
+            ['S', 'T'],
+          ],
+          size: 2,
+        },
+        foundWords: ['TEST'],
+        score: 1,
+        gameOver: false,
+        timeRemaining: 120,
+        timedMode: true,
+      };
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        lastCreatedConnection?._triggerData({
+          type: 'boggle-state',
+          state: boggleState,
+          _messageId: 'boggle-state-1',
+        });
+      });
+
+      expect(callback).toHaveBeenCalledWith(boggleState);
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'boggle-state-1',
+      });
+      registerBoggleStateCallback(null);
+    });
+
+    it('should acknowledge but not reapply a retried Boggle snapshot', async () => {
+      const callback = vi.fn();
+      registerBoggleStateCallback(callback);
+      act(() => useMultiplayerStore.getState().joinGame('boggle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      const message = {
+        type: 'boggle-state',
+        state: {
+          board: { grid: [['T']], size: 1 },
+          foundWords: [],
+          score: 0,
+          gameOver: false,
+          timeRemaining: 120,
+          timedMode: true,
+        },
+        _messageId: 'retried-state-1',
+      };
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        lastCreatedConnection?._triggerData(message);
+        lastCreatedConnection?._triggerData(message);
+      });
+
+      expect(callback).toHaveBeenCalledOnce();
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'retried-state-1',
+      });
+      expect(lastCreatedConnection?.send).toHaveBeenCalledTimes(4);
+      registerBoggleStateCallback(null);
     });
 
     it('should handle ping/pong messages', async () => {

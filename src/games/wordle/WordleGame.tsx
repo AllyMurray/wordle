@@ -9,6 +9,8 @@ import ErrorBoundary from '../../components/ErrorBoundary';
 import { useGameSession } from '../../hooks/useGameSession';
 import { useStatsStore, useUIStore } from '../../stores';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';
+import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
+import { useWindowKeyDown } from '../../hooks/useWindowKeyDown';
 import './WordleGame.css';
 
 export default function WordleGame() {
@@ -100,11 +102,7 @@ export default function WordleGame() {
     }
   }, [effectiveGameOver, gameMode, isViewer, effectiveWon, effectiveGuesses.length, recordGame, openStats, gameIdentifier]);
 
-  // Handle physical keyboard input for solo mode
-  useEffect(() => {
-    if (gameMode !== 'solo') return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
+  const handleSoloKeyDown = useCallback((e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       if (e.key === 'Enter') {
@@ -116,15 +114,16 @@ export default function WordleGame() {
       } else if (/^[a-zA-Z]$/.test(e.key)) {
         wordleStoreAddLetter(e.key);
       }
-    };
+  }, [wordleStoreAddLetter, wordleStoreRemoveLetter, wordleStoreSubmitGuess]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameMode, wordleStoreAddLetter, wordleStoreRemoveLetter, wordleStoreSubmitGuess]);
+  // Keep the game inert while the modal owns keyboard focus.
+  useWindowKeyDown(gameMode === 'solo' && !isStatsOpen, handleSoloKeyDown);
 
   const handleBackToLobby = useCallback(() => {
     handleLeave();
   }, [handleLeave]);
+
+  useGameRouteCleanup(handleLeave);
 
   const handleSoloNewGame = useCallback(() => {
     wordleStoreResetGame();
