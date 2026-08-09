@@ -5,7 +5,9 @@ import { GameLayout } from '../../components/GameLayout/GameLayout';
 import Lobby from '../../components/Lobby';
 import Stats from '../../components/Stats';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import ScreenReaderAnnouncement from '../../components/ScreenReaderAnnouncement';
 import { useGameSession } from '../../hooks/useGameSession';
+import { useGameAnnouncements } from '../../hooks/useGameAnnouncements';
 import { useStatsStore, useUIStore } from '../../stores';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';
 import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
@@ -45,6 +47,7 @@ export default function WordleGame() {
     handleAcceptSuggestion,
     handleRejectSuggestion,
   } = useGameSession('wordle');
+  const announcement = useGameAnnouncements({ guesses, gameOver, won, shake, message });
 
   // Stats from store
   const stats = useStatsStore((s) => s.stats);
@@ -142,6 +145,10 @@ export default function WordleGame() {
       }
     >
       <div className="wordle-game">
+        <ScreenReaderAnnouncement
+          message={announcement}
+          priority={shake || gameOver ? 'assertive' : 'polite'}
+        />
         {gameMode === 'multiplayer' && (
           <ErrorBoundary
             compact
