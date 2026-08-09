@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act } from '@testing-library/react';
-import { useStatsStore } from './statsStore';
+import {
+  DEFAULT_BOGGLE_STATISTICS,
+  migrateStatsState,
+  useStatsStore,
+} from './statsStore';
 import { DEFAULT_STATISTICS } from '../types';
 
 // Mock localStorage
@@ -28,7 +32,10 @@ describe('statsStore', () => {
     vi.clearAllMocks();
     // Reset the store to default state
     act(() => {
-      useStatsStore.setState({ stats: { ...DEFAULT_STATISTICS } });
+      useStatsStore.setState({
+        stats: { ...DEFAULT_STATISTICS },
+        boggleStats: { ...DEFAULT_BOGGLE_STATISTICS },
+      });
     });
   });
 
@@ -43,6 +50,15 @@ describe('statsStore', () => {
       expect(stats.guessDistribution).toEqual([0, 0, 0, 0, 0, 0]);
       expect(stats.soloGamesPlayed).toBe(0);
       expect(stats.multiplayerGamesPlayed).toBe(0);
+    });
+  });
+
+  it('migrates legacy Wordle-only persisted statistics', () => {
+    const legacyStats = { ...DEFAULT_STATISTICS, gamesPlayed: 12, gamesWon: 8 };
+
+    expect(migrateStatsState({ stats: legacyStats })).toEqual({
+      stats: legacyStats,
+      boggleStats: DEFAULT_BOGGLE_STATISTICS,
     });
   });
 
@@ -139,13 +155,35 @@ describe('statsStore', () => {
     });
   });
 
+  describe('recordBoggleGame', () => {
+    it('tracks Boggle results without changing Wordle statistics', () => {
+      const { recordBoggleGame } = useStatsStore.getState();
+
+      act(() => recordBoggleGame(40, 7, 'solo'));
+      act(() => recordBoggleGame(60, 10, 'multiplayer'));
+
+      const { stats, boggleStats } = useStatsStore.getState();
+      expect(stats).toEqual(DEFAULT_STATISTICS);
+      expect(boggleStats).toEqual({
+        gamesPlayed: 2,
+        soloGamesPlayed: 1,
+        multiplayerGamesPlayed: 1,
+        bestScore: 60,
+        mostWords: 10,
+        totalScore: 100,
+        averageScore: 50,
+      });
+    });
+  });
+
   describe('resetStats', () => {
     it('should reset all statistics to default', () => {
-      const { recordGame, resetStats } = useStatsStore.getState();
+      const { recordGame, recordBoggleGame, resetStats } = useStatsStore.getState();
 
       // Play some games
       act(() => recordGame(true, 3, 'solo'));
       act(() => recordGame(true, 4, 'multiplayer'));
+      act(() => recordBoggleGame(25, 5, 'solo'));
 
       expect(useStatsStore.getState().stats.gamesPlayed).toBe(2);
 
@@ -154,6 +192,7 @@ describe('statsStore', () => {
 
       const { stats } = useStatsStore.getState();
       expect(stats).toEqual(DEFAULT_STATISTICS);
+      expect(useStatsStore.getState().boggleStats).toEqual(DEFAULT_BOGGLE_STATISTICS);
     });
   });
 

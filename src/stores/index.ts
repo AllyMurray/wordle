@@ -66,6 +66,7 @@ export {
 export {
   useStatsStore,
   useStats,
+  useBoggleStats,
   useRecordGame,
   useResetStats,
   useWinPercentage,
