@@ -501,7 +501,7 @@ export interface GameStatistics {
   // Guess distribution (index = number of guesses - 1, so index 0 = won in 1 guess)
   guessDistribution: [number, number, number, number, number, number];
 
-  // Last game date (ISO string) for streak tracking
+  // Last completed game date (local YYYY-MM-DD string)
   lastGameDate: string | null;
 
   // Game mode breakdown
@@ -581,27 +581,6 @@ const getLocalDateKey = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-const getCalendarDayNumber = (dateKey: string): number | null => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
-  if (!match) return null;
-
-  const [, year, month, day] = match;
-  if (!year || !month || !day) return null;
-  return Date.UTC(Number(year), Number(month) - 1, Number(day)) / (24 * 60 * 60 * 1000);
-};
-
-// Check if two local calendar dates are consecutive days
-const isConsecutiveDay = (lastDate: string, currentDate: string): boolean => {
-  const lastDay = getCalendarDayNumber(lastDate);
-  const currentDay = getCalendarDayNumber(currentDate);
-  return lastDay !== null && currentDay !== null && currentDay - lastDay === 1;
-};
-
-// Check if date is today
-const isToday = (dateStr: string): boolean => {
-  return dateStr === getLocalDateKey(new Date());
-};
-
 // Record a completed game
 export const recordGameResult = (
   stats: GameStatistics,
@@ -639,16 +618,9 @@ export const recordGameResult = (
     newStats.guessDistribution[distributionIndex] =
       (newStats.guessDistribution[distributionIndex] ?? 0) + 1;
 
-    // Update streak
-    if (stats.lastGameDate && isConsecutiveDay(stats.lastGameDate, today)) {
-      newStats.currentStreak = stats.currentStreak + 1;
-    } else if (stats.lastGameDate && isToday(stats.lastGameDate)) {
-      // Same day, don't change streak
-    } else {
-      // New streak starts
-      newStats.currentStreak = 1;
-    }
-
+    // This is an unlimited game, so a streak means consecutive wins rather
+    // than calendar days (unlike the original daily Wordle).
+    newStats.currentStreak = stats.currentStreak + 1;
     newStats.maxStreak = Math.max(newStats.maxStreak, newStats.currentStreak);
   } else {
     // Lost - reset current streak

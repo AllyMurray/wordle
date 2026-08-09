@@ -166,7 +166,7 @@ describe('statsStore', () => {
       // Win a game (starts streak at 1)
       act(() => recordGame(true, 3, 'solo'));
 
-      // On same day, streak stays at 1 (Wordle is daily game)
+      // A loss breaks the consecutive-win streak.
       expect(useStatsStore.getState().stats.currentStreak).toBe(1);
 
       // Lose a game
@@ -183,22 +183,21 @@ describe('statsStore', () => {
       // Win a game (starts streak at 1)
       act(() => recordGame(true, 3, 'solo'));
 
-      // On same day, streak stays at 1 (Wordle-style daily game)
-      expect(useStatsStore.getState().stats.currentStreak).toBe(1);
-      expect(useStatsStore.getState().stats.maxStreak).toBe(1);
+      // Another win in this unlimited game extends the streak immediately.
+      act(() => recordGame(true, 2, 'solo'));
+      expect(useStatsStore.getState().stats.currentStreak).toBe(2);
+      expect(useStatsStore.getState().stats.maxStreak).toBe(2);
 
       // Lose
       act(() => recordGame(false, 6, 'solo'));
       expect(useStatsStore.getState().stats.currentStreak).toBe(0);
 
-      // Win again on same day - streak logic keeps it at 0 since
-      // lastGameDate is today and "same day, don't change streak"
-      // This is Wordle-style behavior where streaks are daily
+      // The next win starts a new consecutive-win streak.
       act(() => recordGame(true, 3, 'solo'));
 
       const { stats } = useStatsStore.getState();
-      expect(stats.currentStreak).toBe(0); // Same day after loss
-      expect(stats.maxStreak).toBe(1); // Max preserved from earlier
+      expect(stats.currentStreak).toBe(1);
+      expect(stats.maxStreak).toBe(2);
     });
   });
 
