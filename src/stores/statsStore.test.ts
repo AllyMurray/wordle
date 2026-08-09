@@ -113,6 +113,24 @@ describe('statsStore', () => {
       expect(stats.guessDistribution[5]).toBe(1); // 6 guesses
     });
 
+    it('should record streak dates using the local calendar day', () => {
+      const now = new Date();
+      const expectedLocalDate = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, '0'),
+        String(now.getDate()).padStart(2, '0'),
+      ].join('-');
+      const isoSpy = vi
+        .spyOn(Date.prototype, 'toISOString')
+        .mockReturnValue('1999-01-01T00:00:00.000Z');
+
+      act(() => useStatsStore.getState().recordGame(true, 3, 'solo'));
+
+      expect(useStatsStore.getState().stats.lastGameDate).toBe(expectedLocalDate);
+      expect(isoSpy).not.toHaveBeenCalled();
+      isoSpy.mockRestore();
+    });
+
     it('should reset streak on loss', () => {
       const { recordGame } = useStatsStore.getState();
 
