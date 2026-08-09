@@ -279,14 +279,22 @@ export const startHeartbeat = (
       try {
         conn.send({ type: 'ping', timestamp: Date.now() } as PeerMessage);
 
-        internal.heartbeatTimeout = setTimeout(() => {
-          const timeSinceLastHeartbeat = Date.now() - internal.lastHeartbeat;
-          if (timeSinceLastHeartbeat > NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS) {
-            onTimeout();
-          }
-        }, NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS);
+        // Keep one deadline from the first unanswered ping. Replacing it on
+        // every interval would postpone failure forever, while creating a new
+        // timeout each time allows several reconnect attempts to overlap.
+        if (!internal.heartbeatTimeout) {
+          internal.heartbeatTimeout = setTimeout(() => {
+            internal.heartbeatTimeout = null;
+            const timeSinceLastHeartbeat = Date.now() - internal.lastHeartbeat;
+            if (timeSinceLastHeartbeat >= NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS) {
+              stopHeartbeat(internal);
+              onTimeout();
+            }
+          }, NETWORK_CONFIG.HEARTBEAT_TIMEOUT_MS);
+        }
       } catch (err) {
         console.warn('Error sending heartbeat ping:', err);
+        stopHeartbeat(internal);
         onTimeout();
       }
     }

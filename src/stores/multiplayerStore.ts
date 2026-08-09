@@ -999,11 +999,22 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           if (internal.connection) {
             try {
               internal.connection.send({ type: 'ping', timestamp: Date.now() } as PeerMessage);
+              return;
             } catch {
-              // If ping fails, connection is dead - trigger reconnection below
+              // The flags can remain stale after mobile suspension. A failed
+              // send is definitive, so reconnect even if PeerJS still says open.
+              internal.reconnectAttempts = 0;
+              internal.isReconnecting = false;
+              clearReconnectTimeout(internal);
+              attemptConnection(
+                internal.currentGameId,
+                internal.lastSessionCode,
+                true,
+                internal.viewerPinInternal
+              );
+              return;
             }
           }
-          return;
         }
 
         // Connection is dead - if we're in a failed state, reset and try again

@@ -94,6 +94,8 @@ const createMockPeerInstance = () => {
 // Create a mock Peer class that will be returned by loadPeerJS
 class MockPeerClass {
   id: string;
+  open = true;
+  destroyed = false;
   connect: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
   on: ReturnType<typeof vi.fn>;
@@ -586,6 +588,32 @@ describe('multiplayerStore', () => {
       const state = useMultiplayerStore.getState();
       expect(state.connectionStatus).toBe('error');
       expect(state.errorMessage).toBe('Game not found. Check the code and try again.');
+    });
+
+    it('should reconnect when a restoration ping throws despite open flags', async () => {
+      act(() => {
+        useMultiplayerStore.getState().joinGame('wordle', 'ABCDEF-abc123');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+      });
+
+      lastCreatedConnection?.send.mockImplementationOnce(() => {
+        throw new Error('stale data channel');
+      });
+
+      act(() => {
+        useMultiplayerStore.getState().restoreViewerConnection();
+      });
+
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('connecting');
+      expect(mockPeerInstance?.destroy).toHaveBeenCalled();
     });
   });
 
