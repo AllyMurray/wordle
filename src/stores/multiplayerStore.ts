@@ -1102,11 +1102,15 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 );
 
 // Register callbacks for game state updates (called from useGameSession)
-export const registerGameStateCallback = (callback: (state: ViewerGameState) => void): void => {
+export const registerGameStateCallback = (
+  callback: ((state: ViewerGameState) => void) | null
+): void => {
   internal.onGameStateReceived = callback;
 };
 
-export const registerSuggestionResponseCallback = (callback: (accepted: boolean) => void): void => {
+export const registerSuggestionResponseCallback = (
+  callback: ((accepted: boolean) => void) | null
+): void => {
   internal.onSuggestionResponse = callback;
 };
 

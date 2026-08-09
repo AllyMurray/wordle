@@ -604,9 +604,11 @@ describe('useGameSession', () => {
         useMultiplayerStore.setState({ role: 'viewer' });
       });
 
-      renderHook(() => useGameSession());
+      const { unmount } = renderHook(() => useGameSession());
 
       expect(registerSpy).toHaveBeenCalledWith(expect.any(Function));
+      unmount();
+      expect(registerSpy).toHaveBeenCalledWith(null);
     });
 
     it('should register suggestion response callback for viewer', () => {
@@ -616,9 +618,11 @@ describe('useGameSession', () => {
         useMultiplayerStore.setState({ role: 'viewer' });
       });
 
-      renderHook(() => useGameSession());
+      const { unmount } = renderHook(() => useGameSession());
 
       expect(registerSpy).toHaveBeenCalledWith(expect.any(Function));
+      unmount();
+      expect(registerSpy).toHaveBeenCalledWith(null);
     });
   });
 

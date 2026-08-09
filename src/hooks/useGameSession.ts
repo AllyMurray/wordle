@@ -156,6 +156,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
         clearViewerGuess();
         setSuggestionStatus(null);
       });
+      return () => registerGameStateCallback(null);
     }
   }, [isViewer, setGameState, clearViewerGuess, setSuggestionStatus]);
 
@@ -169,6 +170,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
         }
         setTimeout(() => setSuggestionStatus(null), 1500);
       });
+      return () => registerSuggestionResponseCallback(null);
     }
   }, [isViewer, clearViewerGuess, setSuggestionStatus]);
 

@@ -9,6 +9,7 @@ import ErrorBoundary from '../../components/ErrorBoundary';
 import { useGameSession } from '../../hooks/useGameSession';
 import { useStatsStore, useUIStore } from '../../stores';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';
+import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
 import './WordleGame.css';
 
 export default function WordleGame() {
@@ -125,6 +126,8 @@ export default function WordleGame() {
   const handleBackToLobby = useCallback(() => {
     handleLeave();
   }, [handleLeave]);
+
+  useGameRouteCleanup(handleLeave);
 
   const handleSoloNewGame = useCallback(() => {
     wordleStoreResetGame();

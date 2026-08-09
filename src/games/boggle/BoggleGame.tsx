@@ -14,6 +14,7 @@ import {
   useStatsStore,
 } from '../../stores';
 import { useMultiplayerReconnection } from '../../hooks/useMultiplayerReconnection';
+import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';
 import type { GameMode } from '../../types';
 import './BoggleGame.css';
@@ -258,6 +259,14 @@ export default function BoggleGame() {
     setTimedMode(true);
     setGamePhase('lobby');
   }, [stopTimer, resetGame, leaveSession]);
+
+  const handleRouteCleanup = useCallback(() => {
+    stopTimer();
+    resetGame();
+    leaveSession();
+  }, [stopTimer, resetGame, leaveSession]);
+
+  useGameRouteCleanup(handleRouteCleanup);
 
   // Track selected word for highlighting in game over state
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
