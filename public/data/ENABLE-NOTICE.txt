@@ -1,0 +1,9 @@
+The Boggle dictionary is derived from ENABLE, the Enhanced North American
+Benchmark Lexicon. The upstream project describes the list as public domain.
+
+Source: https://github.com/BartMassey/wordlists
+Revision: af52415c13af809bd8757a40f17f46e79d09583c
+File: enable2k.txt.gz
+
+GameHub keeps alphabetic words containing 3 through 17 letters. Seventeen is
+the longest word that can be formed from a 4x4 board when one tile is "Qu".

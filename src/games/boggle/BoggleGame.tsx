@@ -27,6 +27,7 @@ export default function BoggleGame() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [loadingError, setLoadingError] = useState('');
 
   // Game phase state machine: lobby → modeSelect → loading → playing → gameOver
   const [gamePhase, setGamePhase] = useState<GamePhase>('lobby');
@@ -105,6 +106,7 @@ export default function BoggleGame() {
     initGame()
       .then(() => {
         if (!cancelled) {
+          setLoadingError('');
           setGamePhase('playing');
           if (timedMode) {
             startTimer(GAME_DURATION);
@@ -113,8 +115,7 @@ export default function BoggleGame() {
       })
       .catch(() => {
         if (!cancelled) {
-          // On error, return to lobby
-          setGamePhase('lobby');
+          setLoadingError('Unable to load the word list. Check your connection and try again.');
         }
       });
 
@@ -169,10 +170,16 @@ export default function BoggleGame() {
     if (!isViewer) return;
 
     registerBoggleStateCallback((state) => {
-      applyMultiplayerState(state);
-      resetTimer(state.timeRemaining);
-      setTimedMode(state.timedMode);
-      setGamePhase(state.gameOver ? 'gameOver' : 'playing');
+      void applyMultiplayerState(state)
+        .then(() => {
+          setLoadingError('');
+          resetTimer(state.timeRemaining);
+          setTimedMode(state.timedMode);
+          setGamePhase(state.gameOver ? 'gameOver' : 'playing');
+        })
+        .catch(() => {
+          setLoadingError('Unable to load the word list. Check your connection and try again.');
+        });
     });
 
     return () => registerBoggleStateCallback(null);
@@ -257,6 +264,7 @@ export default function BoggleGame() {
     leaveSession();
     setLocalGameMode(null);
     setTimedMode(true);
+    setLoadingError('');
     setGamePhase('lobby');
   }, [stopTimer, resetGame, leaveSession]);
 
@@ -273,6 +281,7 @@ export default function BoggleGame() {
 
   const handleNewGame = useCallback(() => {
     setSelectedWord(null);
+    setLoadingError('');
     setGamePhase('loading');
   }, []);
 
@@ -329,11 +338,13 @@ export default function BoggleGame() {
 
   const handleStartTimed = useCallback(() => {
     setTimedMode(true);
+    setLoadingError('');
     setGamePhase('loading');
   }, []);
 
   const handleStartUntimed = useCallback(() => {
     setTimedMode(false);
+    setLoadingError('');
     setGamePhase('loading');
   }, []);
 
@@ -345,6 +356,7 @@ export default function BoggleGame() {
 
   const handleHost = useCallback(
     (pin?: string) => {
+      setLoadingError('');
       hostGame('boggle', pin);
       setLocalGameMode('multiplayer');
       setGamePhase('loading');
@@ -354,6 +366,7 @@ export default function BoggleGame() {
 
   const handleJoin = useCallback(
     (code: string, pin?: string) => {
+      setLoadingError('');
       joinGame('boggle', code, pin);
       setLocalGameMode('multiplayer');
       setGamePhase('loading');
@@ -430,7 +443,7 @@ export default function BoggleGame() {
           <BoggleLoadingState
             isMultiplayerViewer={localGameMode === 'multiplayer' && isViewer}
             connectionStatus={connectionStatus}
-            errorMessage={errorMessage}
+            errorMessage={loadingError || errorMessage}
           />
         </div>
       </GameLayout>

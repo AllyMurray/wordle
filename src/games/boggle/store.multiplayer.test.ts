@@ -1,12 +1,17 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { initializeDictionary } from './dictionary';
 import { useBoggleStore } from './store';
 
 describe('Boggle multiplayer state', () => {
+  beforeAll(() => {
+    initializeDictionary(['TEST']);
+  });
+
   beforeEach(() => {
     useBoggleStore.getState().resetGame();
   });
 
-  it('applies a host board and progress to the viewer store', () => {
+  it('applies a host board and progress to the viewer store', async () => {
     const state = {
       board: {
         grid: [
@@ -24,7 +29,7 @@ describe('Boggle multiplayer state', () => {
       timedMode: true,
     };
 
-    useBoggleStore.getState().applyMultiplayerState(state);
+    await useBoggleStore.getState().applyMultiplayerState(state);
 
     const applied = useBoggleStore.getState();
     expect(applied.board).toEqual(state.board);

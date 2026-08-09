@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { isValidPath, getWordFromPath, findAllWords } from './solver';
-import { loadDictionary } from './dictionary';
+import { isValidPath, getWordFromPath, findAllWords, validateWord } from './solver';
+import { initializeDictionary } from './dictionary';
 import type { BoggleBoard } from './types';
 
 describe('isValidPath', () => {
@@ -93,7 +93,7 @@ describe('getWordFromPath', () => {
 
 describe('findAllWords', () => {
   beforeAll(() => {
-    loadDictionary();
+    initializeDictionary(['CAT', 'DOG', 'RAT', 'QUIT', 'QUA', 'PLANETS']);
   });
 
   it('should find words on a simple board', () => {
@@ -132,5 +132,38 @@ describe('findAllWords', () => {
     for (const word of words) {
       expect(word.length).toBeGreaterThanOrEqual(3);
     }
+  });
+
+  it('finds words longer than five letters', () => {
+    const board: BoggleBoard = {
+      grid: [
+        ['P', 'L', 'A', 'N'],
+        ['X', 'X', 'S', 'E'],
+        ['X', 'X', 'X', 'T'],
+        ['X', 'X', 'X', 'X'],
+      ],
+      size: 4,
+    };
+
+    expect(findAllWords(board)).toContain('PLANETS');
+  });
+
+  it('accepts a three-letter word formed from a Qu tile and one neighbour', () => {
+    const board: BoggleBoard = {
+      grid: [
+        ['Qu', 'A', 'X', 'X'],
+        ['X', 'X', 'X', 'X'],
+        ['X', 'X', 'X', 'X'],
+        ['X', 'X', 'X', 'X'],
+      ],
+      size: 4,
+    };
+
+    expect(
+      validateWord(board, [
+        { row: 0, col: 0 },
+        { row: 0, col: 1 },
+      ])
+    ).toEqual({ valid: true, word: 'QUA' });
   });
 });

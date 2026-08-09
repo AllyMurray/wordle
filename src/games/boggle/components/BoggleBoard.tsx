@@ -89,7 +89,7 @@ export const BoggleBoard = memo(function BoggleBoard({
       // Check if clicking on the last selected tile - this submits the word
       const lastInPath = selectedPath.length > 0 ? selectedPath[selectedPath.length - 1] : null;
       if (lastInPath && lastInPath.row === row && lastInPath.col === col) {
-        if (selectedPath.length >= 3) {
+        if (currentWord.length >= 3) {
           onSubmit();
         }
         return;
@@ -104,7 +104,7 @@ export const BoggleBoard = memo(function BoggleBoard({
       boardRef.current?.setPointerCapture(event.pointerId);
       onTileSelect({ row, col });
     },
-    [disabled, onTileSelect, selectedPath, onSubmit]
+    [currentWord.length, disabled, onTileSelect, selectedPath, onSubmit]
   );
 
   const handlePointerMove = useCallback(
@@ -140,11 +140,11 @@ export const BoggleBoard = memo(function BoggleBoard({
       }
       // Only auto-submit if user actually dragged to select multiple tiles
       // Individual clicks should add to path without auto-submitting
-      if (didDragMultiple && selectedPath.length >= 3) {
+      if (didDragMultiple && currentWord.length >= 3) {
         onSubmit();
       }
     }
-  }, [selectedPath.length, onSubmit]);
+  }, [currentWord.length, onSubmit]);
 
   return (
     <div className="boggle-board-container">

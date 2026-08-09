@@ -11,6 +11,7 @@ const STATIC_ASSETS = [
   '/gamehub/icons/icon-192.svg',
   '/gamehub/icons/icon-512.svg',
   '/gamehub/icons/icon-maskable.svg',
+  BASE_PATH + 'data/boggle-words.txt',
 ];
 
 // Vite records every hashed entry, CSS file, and lazy chunk in this manifest.

@@ -43,7 +43,7 @@ interface BoggleStoreState extends BoggleState {
   rotateBoard: (direction: 'left' | 'right') => void;
   highlightWord: (word: string) => void;
   clearHighlight: () => void;
-  applyMultiplayerState: (state: BoggleMultiplayerState) => void;
+  applyMultiplayerState: (state: BoggleMultiplayerState) => Promise<void>;
 
   // State getters
   getState: () => BoggleState;
@@ -68,9 +68,7 @@ export const useBoggleStore = create<BoggleStoreState>()(
       set({ isLoading: true });
 
       // Load dictionary if not already loaded
-      if (!isDictionaryLoaded()) {
-        loadDictionary();
-      }
+      if (!isDictionaryLoaded()) await loadDictionary();
 
       // Generate new board
       const board = generateBoard();
@@ -149,9 +147,9 @@ export const useBoggleStore = create<BoggleStoreState>()(
     submitWord: () => {
       const { board, currentPath, foundWords, score, possibleWords } = get();
 
-      if (!board || currentPath.length < 3) {
+      if (!board) {
         set({ currentPath: [], currentWord: '' });
-        return { success: false, reason: 'Word must be at least 3 letters' };
+        return { success: false, reason: 'Game not initialized' };
       }
 
       const result = validateWord(board, currentPath);
@@ -297,7 +295,8 @@ export const useBoggleStore = create<BoggleStoreState>()(
       set({ highlightedPath: [] });
     },
 
-    applyMultiplayerState: (state: BoggleMultiplayerState) => {
+    applyMultiplayerState: async (state: BoggleMultiplayerState) => {
+      if (!isDictionaryLoaded()) await loadDictionary();
       const current = get();
       const boardChanged =
         !current.board ||

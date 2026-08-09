@@ -1,5 +1,4 @@
 import type { TrieNode } from './types';
-import { BOGGLE_WORDS } from './wordlist';
 
 /**
  * Trie data structure for efficient word lookup and prefix checking.
@@ -8,6 +7,9 @@ import { BOGGLE_WORDS } from './wordlist';
 let root: TrieNode | null = null;
 let wordSet: Set<string> | null = null;
 let isLoaded = false;
+let loadingPromise: Promise<void> | null = null;
+
+const DICTIONARY_URL = `${import.meta.env.BASE_URL}data/boggle-words.txt`;
 
 function createNode(): TrieNode {
   return {
@@ -30,17 +32,16 @@ function insertWord(word: string): void {
 }
 
 /**
- * Load the dictionary. Call this before using other dictionary functions.
- * This is synchronous but designed to be called once at game start.
+ * Initialise the in-memory trie from an iterable. Exported so tests can use a
+ * focused fixture instead of downloading the production dictionary.
  */
-export function loadDictionary(): void {
-  if (isLoaded) return;
-
+export function initializeDictionary(words: Iterable<string>): void {
   root = createNode();
   wordSet = new Set();
 
-  for (const word of BOGGLE_WORDS) {
-    const upper = word.toUpperCase();
+  for (const word of words) {
+    const upper = word.trim().toUpperCase();
+    if (!/^[A-Z]{3,17}$/.test(upper)) continue;
     insertWord(upper);
     wordSet.add(upper);
   }
@@ -48,12 +49,33 @@ export function loadDictionary(): void {
   isLoaded = true;
 }
 
+/** Load the public-domain ENABLE word-game dictionary once. */
+export async function loadDictionary(): Promise<void> {
+  if (isLoaded) return;
+  if (loadingPromise) return loadingPromise;
+
+  loadingPromise = fetch(DICTIONARY_URL)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`Unable to load Boggle dictionary (${response.status})`);
+      }
+      return response.text();
+    })
+    .then((contents) => initializeDictionary(contents.split(/\s+/)))
+    .catch((error: unknown) => {
+      loadingPromise = null;
+      throw error;
+    });
+
+  return loadingPromise;
+}
+
 /**
  * Check if a word is in the dictionary.
  */
 export function isWord(word: string): boolean {
   if (!wordSet) {
-    loadDictionary();
+    throw new Error('Boggle dictionary has not been loaded');
   }
   return wordSet!.has(word.toUpperCase());
 }
@@ -64,7 +86,7 @@ export function isWord(word: string): boolean {
  */
 export function isPrefix(prefix: string): boolean {
   if (!root) {
-    loadDictionary();
+    throw new Error('Boggle dictionary has not been loaded');
   }
 
   let node = root!;
@@ -82,7 +104,7 @@ export function isPrefix(prefix: string): boolean {
  */
 export function getTrieRoot(): TrieNode {
   if (!root) {
-    loadDictionary();
+    throw new Error('Boggle dictionary has not been loaded');
   }
   return root!;
 }
