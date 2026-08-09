@@ -18,6 +18,7 @@ import type {
   SuggestionStatus,
   Guess,
   KeyboardStatus,
+  ConnectionStatus,
 } from '../types';
 
 // Return type for useGameSession hook
@@ -41,7 +42,7 @@ export interface UseGameSessionReturn {
   partnerConnected: boolean;
   sessionCode: string;
   sessionPin: string;
-  connectionStatus: string;
+  connectionStatus: ConnectionStatus;
   errorMessage: string;
   pendingSuggestion: { word: string } | null;
 

@@ -6,6 +6,7 @@ import { BoggleBoard, Timer, WordList, AllWordsList, BoggleLoadingState } from '
 import { GameLayout } from '../../components/GameLayout/GameLayout';
 import Lobby from '../../components/Lobby';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import { ConnectionAlert } from '../../components/ConnectionAlert';
 import {
   registerBoggleStateCallback,
   registerBoggleWordCallback,
@@ -462,36 +463,45 @@ export default function BoggleGame() {
             <div className="connection-status">
               {isHost && (
                 <div className="session-info">
-                  <span className="session-label">Share code:</span>
-                  <span className="session-code">{sessionCode}</span>
-                  {sessionPin && (
-                    <span className="session-pin-indicator" title={`PIN: ${sessionPin}`}>
-                      🔒
-                    </span>
-                  )}
-                  <div className="share-buttons">
-                    <button
-                      className="share-btn copy"
-                      onClick={handleCopyLink}
-                      aria-label="Copy game link to clipboard"
-                      title="Copy link"
-                    >
-                      {copyFeedback ? 'Copied!' : 'Copy Link'}
-                    </button>
-                    <button
-                      className="share-btn whatsapp"
-                      onClick={handleWhatsAppShare}
-                      aria-label="Share game link via WhatsApp"
-                      title="Share on WhatsApp"
-                    >
-                      WhatsApp
-                    </button>
-                  </div>
-                  {partnerConnected ? (
-                    <span className="partner-status connected">Partner connected</span>
-                  ) : (
-                    <span className="partner-status waiting">Waiting for partner...</span>
-                  )}
+                  {sessionCode ? (
+                    <>
+                      <span className="session-label">Share code:</span>
+                      <span className="session-code">{sessionCode}</span>
+                      {sessionPin && (
+                        <span className="session-pin-indicator" title={`PIN: ${sessionPin}`}>
+                          🔒
+                        </span>
+                      )}
+                      <div className="share-buttons">
+                        <button
+                          className="share-btn copy"
+                          onClick={handleCopyLink}
+                          aria-label="Copy game link to clipboard"
+                          title="Copy link"
+                        >
+                          {copyFeedback ? 'Copied!' : 'Copy Link'}
+                        </button>
+                        <button
+                          className="share-btn whatsapp"
+                          onClick={handleWhatsAppShare}
+                          aria-label="Share game link via WhatsApp"
+                          title="Share on WhatsApp"
+                        >
+                          WhatsApp
+                        </button>
+                      </div>
+                    </>
+                  ) : connectionStatus !== 'error' ? (
+                    <span className="partner-status waiting">Creating session...</span>
+                  ) : null}
+                  <ConnectionAlert status={connectionStatus} message={errorMessage} />
+                  {connectionStatus !== 'error' &&
+                    sessionCode &&
+                    (partnerConnected ? (
+                      <span className="partner-status connected">Partner connected</span>
+                    ) : (
+                      <span className="partner-status waiting">Waiting for partner...</span>
+                    ))}
                 </div>
               )}
               {isViewer && (
@@ -503,9 +513,7 @@ export default function BoggleGame() {
                   {connectionStatus === 'connected' && (
                     <span className="partner-status connected">Connected</span>
                   )}
-                  {connectionStatus === 'error' && (
-                    <span className="partner-status error">{errorMessage}</span>
-                  )}
+                  <ConnectionAlert status={connectionStatus} message={errorMessage} />
                 </div>
               )}
             </div>
