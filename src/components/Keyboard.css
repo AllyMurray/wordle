@@ -51,28 +51,35 @@
 }
 
 .key.correct {
-  background-color: var(--color-correct);
+  background-color: var(--wordle-correct);
   color: white;
-  box-shadow: 0 2px 8px var(--color-correct-glow);
+  box-shadow: 0 2px 8px var(--wordle-correct-glow);
 }
 
 .key.correct:hover {
-  background-color: var(--color-correct-hover);
+  background-color: var(--wordle-correct-hover);
 }
 
 .key.present {
-  background-color: var(--color-present);
+  background-color: var(--wordle-present);
   color: white;
-  box-shadow: 0 2px 8px var(--color-present-glow);
+  box-shadow: 0 2px 8px var(--wordle-present-glow);
 }
 
 .key.present:hover {
-  background-color: var(--color-present-hover);
+  background-color: var(--wordle-present-hover);
 }
 
 .key.absent {
-  background-color: var(--tile-bg-absent);
-  color: white;
+  background-color: var(--wordle-absent);
+  color: var(--wordle-absent-text);
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.key.absent:hover {
+  background-color: var(--wordle-absent);
+  opacity: 0.85;
 }
 
 .keyboard.disabled {

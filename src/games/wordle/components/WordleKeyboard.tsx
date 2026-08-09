@@ -16,6 +16,18 @@ const KEYBOARD_ROWS = [
   ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACK'],
 ];
 
+const getKeyAriaLabel = (
+  key: string,
+  status: KeyboardStatus[string] | undefined
+): string => {
+  if (key === 'BACK') return 'Backspace';
+  if (key === 'ENTER') return 'Enter';
+  if (status === 'correct') return `${key}, correct position`;
+  if (status === 'present') return `${key}, in word but wrong position`;
+  if (status === 'absent') return `${key}, not in word`;
+  return key;
+};
+
 export const WordleKeyboard = memo(function WordleKeyboard({
   keyboardStatus,
   onKey,
@@ -52,7 +64,7 @@ export const WordleKeyboard = memo(function WordleKeyboard({
                 className={`keyboard-key ${status ? `keyboard-key--${status}` : ''} ${isWide ? 'keyboard-key--wide' : ''}`}
                 onClick={() => handleClick(key)}
                 disabled={disabled}
-                aria-label={key === 'BACK' ? 'Backspace' : key}
+                aria-label={getKeyAriaLabel(key, status)}
               >
                 {key === 'BACK' ? '⌫' : key}
               </button>

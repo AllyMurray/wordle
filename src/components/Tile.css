@@ -24,24 +24,24 @@
 }
 
 .tile.correct {
-  background-color: var(--color-correct);
-  border-color: var(--color-correct);
+  background-color: var(--wordle-correct);
+  border-color: var(--wordle-correct);
   color: white;
   animation: flip 0.5s ease forwards;
   animation-delay: var(--tile-delay, 0ms);
 }
 
 .tile.present {
-  background-color: var(--color-present);
-  border-color: var(--color-present);
+  background-color: var(--wordle-present);
+  border-color: var(--wordle-present);
   color: white;
   animation: flip 0.5s ease forwards;
   animation-delay: var(--tile-delay, 0ms);
 }
 
 .tile.absent {
-  background-color: var(--tile-bg-absent);
-  border-color: var(--tile-bg-absent);
+  background-color: var(--wordle-absent);
+  border-color: var(--wordle-absent);
   color: white;
   animation: flip 0.5s ease forwards;
   animation-delay: var(--tile-delay, 0ms);
