@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useMultiplayerStore } from '../stores';
+import { useMultiplayerStore } from '../stores/multiplayerStore';
 
 /**
  * Hook to handle automatic reconnection for multiplayer games.

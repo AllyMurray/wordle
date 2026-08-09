@@ -21,9 +21,9 @@ import {
   registerBoggleWordResultCallback,
   registerStateRequestCallback,
   useMultiplayerStore,
-  useStatsStore,
-  useUIStore,
-} from '../../stores';
+} from '../../stores/multiplayerStore';
+import { useStatsStore } from '../../stores/statsStore';
+import { useUIStore } from '../../stores/uiStore';
 import { useMultiplayerReconnection } from '../../hooks/useMultiplayerReconnection';
 import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';

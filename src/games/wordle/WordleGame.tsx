@@ -9,7 +9,8 @@ import ScreenReaderAnnouncement from '../../components/ScreenReaderAnnouncement'
 import { ConnectionAlert } from '../../components/ConnectionAlert';
 import { useGameSession } from '../../hooks/useGameSession';
 import { useGameAnnouncements } from '../../hooks/useGameAnnouncements';
-import { useStatsStore, useUIStore } from '../../stores';
+import { useStatsStore } from '../../stores/statsStore';
+import { useUIStore } from '../../stores/uiStore';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';
 import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
 import './WordleGame.css';

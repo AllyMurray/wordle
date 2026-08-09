@@ -5,14 +5,16 @@ import { useWindowKeyDown } from './useWindowKeyDown';
 import { isValidGuess } from '../data/words';
 import {
   useGameStore,
+  MAX_GUESSES_COUNT,
+  WORD_LENGTH_COUNT,
+} from '../stores/gameStore';
+import {
   useMultiplayerStore,
-  useUIStore,
   registerGameStateCallback,
   registerSuggestionResponseCallback,
   registerStateRequestCallback,
-  MAX_GUESSES_COUNT,
-  WORD_LENGTH_COUNT,
-} from '../stores';
+} from '../stores/multiplayerStore';
+import { useUIStore } from '../stores/uiStore';
 import type {
   GameMode,
   SuggestionStatus,

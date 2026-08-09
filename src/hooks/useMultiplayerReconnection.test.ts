@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { useMultiplayerReconnection } from './useMultiplayerReconnection';
-import { useMultiplayerStore } from '../stores';
+import { useMultiplayerStore } from '../stores/multiplayerStore';
 
 describe('useMultiplayerReconnection', () => {
   const mockRestoreHostConnection = vi.fn();
