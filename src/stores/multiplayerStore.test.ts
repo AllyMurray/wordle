@@ -787,6 +787,7 @@ describe('multiplayerStore', () => {
           errorMessage: 'some error',
           partnerConnected: true,
           pendingSuggestion: { word: 'HELLO' },
+          currentGameId: 'wordle',
         });
       });
 
@@ -804,6 +805,7 @@ describe('multiplayerStore', () => {
       expect(state.errorMessage).toBe('');
       expect(state.partnerConnected).toBe(false);
       expect(state.pendingSuggestion).toBe(null);
+      expect(state.currentGameId).toBe('');
     });
 
     it('should ignore PeerJS loading that completes after leaving', async () => {

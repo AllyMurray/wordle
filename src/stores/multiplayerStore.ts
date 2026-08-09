@@ -799,8 +799,14 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
       leaveSession: () => {
         cleanup(internal);
+        internal.lastSessionCode = '';
+        internal.currentGameId = '';
         internal.sessionPinInternal = '';
         internal.viewerPinInternal = '';
+        internal.wordleStateRevision = 0;
+        internal.boggleStateRevision = 0;
+        internal.lastReceivedWordleRevision = -1;
+        internal.lastReceivedBoggleRevision = -1;
         // Reset rate limiting state when leaving session
         resetRateLimitState(rateLimitState);
         set({
@@ -811,6 +817,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           errorMessage: '',
           partnerConnected: false,
           pendingSuggestion: null,
+          currentGameId: '',
         });
       },
 
