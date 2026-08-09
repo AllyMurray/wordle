@@ -146,23 +146,3 @@ export const useStatsStore = create<StatsState>()(
     }
   )
 );
-
-// Selector hooks for fine-grained subscriptions
-// Components using these will only re-render when their specific data changes
-
-export const useStats = () => useStatsStore((state) => state.stats);
-export const useBoggleStats = () => useStatsStore((state) => state.boggleStats);
-export const useRecordGame = () => useStatsStore((state) => state.recordGame);
-export const useRecordBoggleGame = () => useStatsStore((state) => state.recordBoggleGame);
-export const useResetStats = () => useStatsStore((state) => state.resetStats);
-
-// Derived selectors
-export const useWinPercentage = () =>
-  useStatsStore((state) =>
-    state.stats.gamesPlayed > 0
-      ? Math.round((state.stats.gamesWon / state.stats.gamesPlayed) * 100)
-      : 0
-  );
-
-export const useMaxDistributionValue = () =>
-  useStatsStore((state) => Math.max(...state.stats.guessDistribution, 1));

@@ -67,7 +67,7 @@ export const generateSessionCode = (): string => {
 };
 
 // Message with ID for acknowledgment tracking
-export interface PendingMessage {
+interface PendingMessage {
   id: string;
   message: PeerMessage;
   retries: number;
@@ -371,17 +371,6 @@ export const startHeartbeat = (
       }
     }
   }, NETWORK_CONFIG.HEARTBEAT_INTERVAL_MS);
-};
-
-/**
- * Create a Peer instance with the given ID.
- * This function uses the lazy-loaded PeerJS class.
- */
-export const createPeer = async (
-  peerId: string
-): Promise<InstanceType<typeof import('peerjs').default>> => {
-  const Peer = await loadPeerJS();
-  return new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
 };
 
 /**

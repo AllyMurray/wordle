@@ -100,16 +100,6 @@ export function isPrefix(prefix: string): boolean {
 }
 
 /**
- * Get the trie root for advanced operations.
- */
-export function getTrieRoot(): TrieNode {
-  if (!root) {
-    throw new Error('Boggle dictionary has not been loaded');
-  }
-  return root!;
-}
-
-/**
  * Check if dictionary is loaded.
  */
 export function isDictionaryLoaded(): boolean {

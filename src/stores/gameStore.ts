@@ -221,17 +221,6 @@ export const useGameStore = create<GameStoreState>()(
   }))
 );
 
-// Selector hooks for fine-grained subscriptions
-export const useSolution = () => useGameStore((state) => state.solution);
-export const useGuesses = () => useGameStore((state) => state.guesses);
-export const useCurrentGuess = () => useGameStore((state) => state.currentGuess);
-export const useViewerGuess = () => useGameStore((state) => state.viewerGuess);
-export const useGameOver = () => useGameStore((state) => state.gameOver);
-export const useWon = () => useGameStore((state) => state.won);
-export const useShake = () => useGameStore((state) => state.shake);
-export const useMessage = () => useGameStore((state) => state.message);
-export const useIsViewer = () => useGameStore((state) => state.isViewer);
-
 // Constants
 export const MAX_GUESSES_COUNT = MAX_GUESSES;
 export const WORD_LENGTH_COUNT = WORD_LENGTH;

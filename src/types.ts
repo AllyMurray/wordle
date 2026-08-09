@@ -524,56 +524,6 @@ export const DEFAULT_STATISTICS: GameStatistics = {
 // LocalStorage key for statistics
 export const STATS_STORAGE_KEY = 'wordle-statistics';
 
-// Schema for validating stored statistics
-const GuessDistributionSchema = z.tuple([
-  z.number(),
-  z.number(),
-  z.number(),
-  z.number(),
-  z.number(),
-  z.number(),
-]);
-
-const GameStatisticsSchema = z.object({
-  gamesPlayed: z.number().min(0),
-  gamesWon: z.number().min(0),
-  currentStreak: z.number().min(0),
-  maxStreak: z.number().min(0),
-  guessDistribution: GuessDistributionSchema,
-  lastGameDate: z.string().nullable(),
-  soloGamesPlayed: z.number().min(0),
-  multiplayerGamesPlayed: z.number().min(0),
-});
-
-// Load statistics from localStorage with validation
-export const loadStatistics = (): GameStatistics => {
-  try {
-    const stored = localStorage.getItem(STATS_STORAGE_KEY);
-    if (!stored) {
-      return { ...DEFAULT_STATISTICS };
-    }
-    const parsed = JSON.parse(stored) as unknown;
-    const result = GameStatisticsSchema.safeParse(parsed);
-    if (result.success) {
-      return result.data;
-    }
-    // Invalid data, return defaults
-    return { ...DEFAULT_STATISTICS };
-  } catch {
-    // Parse error, return defaults
-    return { ...DEFAULT_STATISTICS };
-  }
-};
-
-// Save statistics to localStorage
-export const saveStatistics = (stats: GameStatistics): void => {
-  try {
-    localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
-  } catch {
-    // Storage error (e.g., quota exceeded), silently ignore
-  }
-};
-
 const getLocalDateKey = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');

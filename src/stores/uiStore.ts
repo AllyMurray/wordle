@@ -100,9 +100,5 @@ export const useUIStore = create<UIState>((set, get) => ({
 // Apply initial theme on load
 applyTheme(useUIStore.getState().theme);
 
-// Selector hooks
-export const useGameMode = () => useUIStore((state) => state.gameMode);
-export const useSuggestionStatus = () => useUIStore((state) => state.suggestionStatus);
-export const useIsStatsOpen = () => useUIStore((state) => state.isStatsOpen);
 export const useTheme = () => useUIStore((state) => state.theme);
 export const useToggleTheme = () => useUIStore((state) => state.toggleTheme);
