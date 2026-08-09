@@ -558,7 +558,7 @@ describe('useGameSession', () => {
       const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
 
       act(() => {
-        useUIStore.setState({ gameMode: 'solo' });
+        useUIStore.setState({ gameMode: 'multiplayer' });
       });
 
       renderHook(() => useGameSession());
@@ -570,7 +570,7 @@ describe('useGameSession', () => {
       const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
 
       act(() => {
-        useUIStore.setState({ gameMode: 'solo' });
+        useUIStore.setState({ gameMode: 'multiplayer' });
       });
 
       const { unmount } = renderHook(() => useGameSession());
@@ -593,6 +593,18 @@ describe('useGameSession', () => {
         (call) => call[0] === 'keydown'
       );
       expect(keydownCalls).toHaveLength(0);
+    });
+
+    it('should not add keyboard listener while statistics are open', () => {
+      const addEventListenerSpy = vi.spyOn(window, 'addEventListener');
+      addEventListenerSpy.mockClear();
+      act(() => useUIStore.setState({ gameMode: 'multiplayer', isStatsOpen: true }));
+
+      renderHook(() => useGameSession());
+
+      expect(
+        addEventListenerSpy.mock.calls.filter((call) => call[0] === 'keydown')
+      ).toHaveLength(0);
     });
   });
 

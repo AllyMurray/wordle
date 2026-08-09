@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useLatest } from './useLatest';
 import { useMultiplayerReconnection } from './useMultiplayerReconnection';
+import { useWindowKeyDown } from './useWindowKeyDown';
 import { WORDS } from '../data/words';
 import {
   useGameStore,
@@ -117,6 +118,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
   const setGameMode = useUIStore((s) => s.setGameMode);
   const suggestionStatus = useUIStore((s) => s.suggestionStatus);
   const setSuggestionStatus = useUIStore((s) => s.setSuggestionStatus);
+  const isStatsOpen = useUIStore((s) => s.isStatsOpen);
 
   const isHost = role === 'host';
   const isViewer = role === 'viewer';
@@ -269,12 +271,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
     [handleKeyPress, viewerGuess, setSuggestionStatus]
   );
 
-  useEffect(() => {
-    if (gameMode) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [handleKeyDown, gameMode]);
+  useWindowKeyDown(gameMode === 'multiplayer' && !isStatsOpen, handleKeyDown);
 
   // Game session action handlers
   const handlePlaySolo = useCallback((): void => {
