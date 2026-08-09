@@ -23,8 +23,18 @@ export const getJoinCodeFromUrl = (searchParams: URLSearchParams): string | null
  */
 export const generateShareUrl = (sessionCode: string): string => {
   const url = new URL(window.location.href);
+
+  // HashRouter reads the route and its search parameters from the fragment.
+  // A normal URL search parameter (`?join=...#/wordle`) is invisible to
+  // useSearchParams(), so keep the invite parameter inside the hash route.
+  const hashRoute = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash;
+  const [hashPath = '/', hashSearch = ''] = hashRoute.split('?', 2);
+  const hashSearchParams = new URLSearchParams(hashSearch);
+
+  hashSearchParams.set('join', sessionCode);
   url.search = '';
-  url.searchParams.set('join', sessionCode);
+  url.hash = `${hashPath || '/'}?${hashSearchParams.toString()}`;
+
   return url.toString();
 };
 
