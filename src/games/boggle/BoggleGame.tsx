@@ -9,6 +9,7 @@ import {
   AllWordsList,
   BoggleLoadingState,
   BoggleWordFeedback,
+  BoggleStats,
 } from './components';
 import { GameLayout } from '../../components/GameLayout/GameLayout';
 import Lobby from '../../components/Lobby';
@@ -21,6 +22,7 @@ import {
   registerStateRequestCallback,
   useMultiplayerStore,
   useStatsStore,
+  useUIStore,
 } from '../../stores';
 import { useMultiplayerReconnection } from '../../hooks/useMultiplayerReconnection';
 import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
@@ -94,6 +96,10 @@ export default function BoggleGame() {
 
   // Stats
   const recordBoggleGame = useStatsStore((s) => s.recordBoggleGame);
+  const boggleStats = useStatsStore((s) => s.boggleStats);
+  const isStatsOpen = useUIStore((s) => s.isStatsOpen);
+  const openStats = useUIStore((s) => s.openStats);
+  const closeStats = useUIStore((s) => s.closeStats);
 
   // Track game completion for stats
   const lastRecordedGameRef = useRef<string | null>(null);
@@ -166,12 +172,21 @@ export default function BoggleGame() {
     ) {
       lastRecordedGameRef.current = gameIdentifier;
       recordBoggleGame(score, foundWords.length, localGameMode === 'solo' ? 'solo' : 'multiplayer');
+      openStats();
     }
 
     if (!isGameOver && lastRecordedGameRef.current !== null) {
       lastRecordedGameRef.current = null;
     }
-  }, [gamePhase, localGameMode, isViewer, score, foundWords.length, recordBoggleGame]);
+  }, [
+    gamePhase,
+    localGameMode,
+    isViewer,
+    score,
+    foundWords.length,
+    recordBoggleGame,
+    openStats,
+  ]);
 
   // Handle page visibility changes for connection restoration
   useMultiplayerReconnection();
@@ -481,7 +496,16 @@ export default function BoggleGame() {
   }
 
   return (
-    <GameLayout gameId="boggle" gameName="Boggle" onBack={handleBackToLobby}>
+    <GameLayout
+      gameId="boggle"
+      gameName="Boggle"
+      onBack={handleBackToLobby}
+      headerActions={
+        <button className="stats-btn" onClick={openStats} aria-label="View Boggle statistics">
+          Stats
+        </button>
+      }
+    >
       <div className="boggle-game">
         {/* Connection status for multiplayer */}
         {localGameMode === 'multiplayer' && (
@@ -672,8 +696,8 @@ export default function BoggleGame() {
             )}
           </div>
         </div>
-
       </div>
+      <BoggleStats stats={boggleStats} isOpen={isStatsOpen} onClose={closeStats} />
     </GameLayout>
   );
 }
