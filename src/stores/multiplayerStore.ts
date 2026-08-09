@@ -141,6 +141,21 @@ export const useMultiplayerStore = create<MultiplayerState>()(
     // Forward declaration for attemptConnection (used in reconnection)
     let attemptConnection: (gameId: string, code: string, isReconnect?: boolean, pin?: string) => void;
 
+    const monitorHostConnection = (conn: DataConnection): void => {
+      startHeartbeat(internal, conn, () => {
+        if (internal.connection !== conn) return;
+
+        try {
+          conn.close();
+        } catch (err) {
+          console.warn('Error closing stale host connection:', err);
+        }
+        internal.connection = null;
+        clearPendingMessages(internal);
+        set({ partnerConnected: false, pendingSuggestion: null });
+      });
+    };
+
     // Host a new game session
     const hostGame = (gameId: string, pin?: string): void => {
       cleanup(internal);
@@ -206,6 +221,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 previousConnection.close();
               }
               set({ partnerConnected: true, pendingSuggestion: null });
+              monitorHostConnection(conn);
             };
 
             conn.on('open', () => {
@@ -318,12 +334,16 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
             conn.on('close', () => {
               if (internal.connection === conn) {
+                stopHeartbeat(internal);
+                internal.connection = null;
                 set({ partnerConnected: false, pendingSuggestion: null });
               }
             });
 
             conn.on('error', () => {
               if (internal.connection === conn) {
+                stopHeartbeat(internal);
+                internal.connection = null;
                 set({ partnerConnected: false, pendingSuggestion: null });
               }
             });
@@ -890,6 +910,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                   previousConnection.close();
                 }
                 set({ partnerConnected: true, pendingSuggestion: null });
+                monitorHostConnection(conn);
               };
 
               conn.on('open', () => {
@@ -998,12 +1019,16 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
               conn.on('close', () => {
                 if (internal.connection === conn) {
+                  stopHeartbeat(internal);
+                  internal.connection = null;
                   set({ partnerConnected: false, pendingSuggestion: null });
                 }
               });
 
               conn.on('error', () => {
                 if (internal.connection === conn) {
+                  stopHeartbeat(internal);
+                  internal.connection = null;
                   set({ partnerConnected: false, pendingSuggestion: null });
                 }
               });

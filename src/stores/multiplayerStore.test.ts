@@ -314,6 +314,23 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().partnerConnected).toBe(true);
     });
 
+    it('should clear a host partner when heartbeats go unanswered', async () => {
+      act(() => useMultiplayerStore.getState().hostGame('wordle'));
+      await act(async () => flushAsyncOperations());
+
+      const viewer = createMockConnection(true);
+      act(() => {
+        mockPeerInstance?._triggerConnection(viewer as unknown as DataConnection);
+        viewer._triggerOpen();
+      });
+      expect(useMultiplayerStore.getState().partnerConnected).toBe(true);
+
+      act(() => vi.advanceTimersByTime(20000));
+
+      expect(viewer.close).toHaveBeenCalledOnce();
+      expect(useMultiplayerStore.getState().partnerConnected).toBe(false);
+    });
+
     it('should service an authenticated viewer state request', async () => {
       const onStateRequested = vi.fn();
       registerStateRequestCallback(onStateRequested);
