@@ -5,6 +5,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   base: '/gamehub/',
+  build: {
+    // The service worker uses this to precache hashed entry and lazy-game assets.
+    manifest: 'asset-manifest.json',
+  },
   test: {
     globals: true,
     environment: 'jsdom',
