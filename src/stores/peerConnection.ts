@@ -15,6 +15,7 @@ import type {
   PeerMessage,
   GameState,
   ViewerGameState,
+  BoggleMultiplayerState,
 } from '../types';
 import {
   validatePeerMessage,
@@ -99,6 +100,8 @@ export interface InternalConnectionState {
   // Callbacks for game state updates (set by useGameSession)
   onGameStateReceived: ((state: ViewerGameState) => void) | null;
   onSuggestionResponse: ((accepted: boolean) => void) | null;
+  onBoggleStateReceived: ((state: BoggleMultiplayerState) => void) | null;
+  onBoggleWordReceived: ((word: string) => void) | null;
 }
 
 export const createInternalState = (): InternalConnectionState => ({
@@ -119,6 +122,8 @@ export const createInternalState = (): InternalConnectionState => ({
   currentGameId: '',
   onGameStateReceived: null,
   onSuggestionResponse: null,
+  onBoggleStateReceived: null,
+  onBoggleWordReceived: null,
 });
 
 // Helper functions

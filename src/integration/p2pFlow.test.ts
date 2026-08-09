@@ -86,6 +86,24 @@ describe('Integration: P2P Message Validation', () => {
       { type: 'auth-request', pin: '1234' },
       { type: 'auth-success' },
       { type: 'auth-failure', reason: 'Incorrect PIN' },
+      {
+        type: 'boggle-state',
+        state: {
+          board: {
+            grid: [
+              ['T', 'E'],
+              ['S', 'T'],
+            ],
+            size: 2,
+          },
+          foundWords: ['TEST'],
+          score: 1,
+          gameOver: false,
+          timeRemaining: 120,
+          timedMode: true,
+        },
+      },
+      { type: 'boggle-word', word: 'TEST' },
     ];
 
     validMessages.forEach((message) => {

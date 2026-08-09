@@ -264,6 +264,19 @@ export interface ViewerGameState {
   message: string;
 }
 
+// Host-authoritative Boggle state sent to viewers.
+export interface BoggleMultiplayerState {
+  board: {
+    grid: string[][];
+    size: number;
+  };
+  foundWords: string[];
+  score: number;
+  gameOver: boolean;
+  timeRemaining: number;
+  timedMode: boolean;
+}
+
 // Keyboard status map (letter -> status)
 export type KeyboardStatus = Record<string, LetterStatus>;
 
@@ -373,6 +386,30 @@ const AuthFailureMessageSchema = z.object({
   reason: z.string(),
 });
 
+const BoggleBoardSchema = z.object({
+  grid: z.array(z.array(z.string())),
+  size: z.number().int().positive(),
+});
+
+const BoggleMultiplayerStateSchema = z.object({
+  board: BoggleBoardSchema,
+  foundWords: z.array(z.string()),
+  score: z.number().nonnegative(),
+  gameOver: z.boolean(),
+  timeRemaining: z.number().int().nonnegative(),
+  timedMode: z.boolean(),
+});
+
+const BoggleStateMessageSchema = z.object({
+  type: z.literal('boggle-state'),
+  state: BoggleMultiplayerStateSchema,
+});
+
+const BoggleWordMessageSchema = z.object({
+  type: z.literal('boggle-word'),
+  word: z.string().min(3).max(32),
+});
+
 // Union schema for all peer messages
 export const PeerMessageSchema = z.discriminatedUnion('type', [
   RequestStateMessageSchema,
@@ -387,6 +424,8 @@ export const PeerMessageSchema = z.discriminatedUnion('type', [
   AuthRequestMessageSchema,
   AuthSuccessMessageSchema,
   AuthFailureMessageSchema,
+  BoggleStateMessageSchema,
+  BoggleWordMessageSchema,
 ]);
 
 // Inferred PeerMessage type from schema

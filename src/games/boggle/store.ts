@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { BoggleState, Position, WordsByLength } from './types';
+import type { BoggleMultiplayerState } from '../../types';
 import { generateBoard } from './board';
 import { validateWord, getWordFromPath, canFormWord, findAllWords, findWordPath } from './solver';
 import { calculateWordScore, calculateTotalScore } from './scoring';
@@ -42,6 +43,7 @@ interface BoggleStoreState extends BoggleState {
   rotateBoard: (direction: 'left' | 'right') => void;
   highlightWord: (word: string) => void;
   clearHighlight: () => void;
+  applyMultiplayerState: (state: BoggleMultiplayerState) => void;
 
   // State getters
   getState: () => BoggleState;
@@ -293,6 +295,28 @@ export const useBoggleStore = create<BoggleStoreState>()(
 
     clearHighlight: () => {
       set({ highlightedPath: [] });
+    },
+
+    applyMultiplayerState: (state: BoggleMultiplayerState) => {
+      const current = get();
+      const boardChanged =
+        !current.board ||
+        JSON.stringify(current.board.grid) !== JSON.stringify(state.board.grid);
+      const possibleWords = boardChanged ? findAllWords(state.board) : current.possibleWords;
+
+      set({
+        board: state.board,
+        foundWords: state.foundWords,
+        currentPath: boardChanged ? [] : current.currentPath,
+        currentWord: boardChanged ? '' : current.currentWord,
+        score: state.score,
+        gameOver: state.gameOver,
+        isLoading: false,
+        possibleWords,
+        maxScore: calculateTotalScore(possibleWords),
+        wordsByLength: calculateWordsByLength(possibleWords, state.foundWords),
+        highlightedPath: boardChanged ? [] : current.highlightedPath,
+      });
     },
 
     getState: () => {

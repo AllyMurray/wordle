@@ -133,6 +133,8 @@ import {
   useMultiplayerStore,
   registerGameStateCallback,
   registerSuggestionResponseCallback,
+  registerBoggleStateCallback,
+  registerBoggleWordCallback,
 } from './multiplayerStore';
 import { loadPeerJS } from './peerConnection';
 
@@ -1067,6 +1069,13 @@ describe('multiplayerStore', () => {
 
       expect(() => registerSuggestionResponseCallback(mockCallback)).not.toThrow();
     });
+
+    it('should register and clear Boggle callbacks', () => {
+      expect(() => registerBoggleStateCallback(vi.fn())).not.toThrow();
+      expect(() => registerBoggleWordCallback(vi.fn())).not.toThrow();
+      expect(() => registerBoggleStateCallback(null)).not.toThrow();
+      expect(() => registerBoggleWordCallback(null)).not.toThrow();
+    });
   });
 
   describe('message handling', () => {
@@ -1097,6 +1106,79 @@ describe('multiplayerStore', () => {
 
       // State should be unchanged from invalid message
       expect(useMultiplayerStore.getState().pendingSuggestion).toBe(null);
+    });
+
+    it('should deliver and acknowledge viewer Boggle words to the host', async () => {
+      const callback = vi.fn();
+      registerBoggleWordCallback(callback);
+      act(() => {
+        useMultiplayerStore.getState().hostGame('boggle');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      const viewerConnection = createMockConnection();
+      act(() => {
+        mockPeerInstance?._triggerConnection(viewerConnection as unknown as DataConnection);
+        viewerConnection._triggerOpen();
+        viewerConnection._triggerData({
+          type: 'boggle-word',
+          word: 'TEST',
+          _messageId: 'boggle-word-1',
+        });
+      });
+
+      expect(callback).toHaveBeenCalledWith('TEST');
+      expect(viewerConnection.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'boggle-word-1',
+      });
+      registerBoggleWordCallback(null);
+    });
+
+    it('should deliver and acknowledge host Boggle state to the viewer', async () => {
+      const callback = vi.fn();
+      registerBoggleStateCallback(callback);
+      act(() => {
+        useMultiplayerStore.getState().joinGame('boggle', 'ABCDEF-abc123');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      const boggleState = {
+        board: {
+          grid: [
+            ['T', 'E'],
+            ['S', 'T'],
+          ],
+          size: 2,
+        },
+        foundWords: ['TEST'],
+        score: 1,
+        gameOver: false,
+        timeRemaining: 120,
+        timedMode: true,
+      };
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        lastCreatedConnection?._triggerData({
+          type: 'boggle-state',
+          state: boggleState,
+          _messageId: 'boggle-state-1',
+        });
+      });
+
+      expect(callback).toHaveBeenCalledWith(boggleState);
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'boggle-state-1',
+      });
+      registerBoggleStateCallback(null);
     });
 
     it('should handle ping/pong messages', async () => {

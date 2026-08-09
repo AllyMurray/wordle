@@ -58,6 +58,8 @@ export {
   usePendingSuggestion,
   registerGameStateCallback,
   registerSuggestionResponseCallback,
+  registerBoggleStateCallback,
+  registerBoggleWordCallback,
 } from './multiplayerStore';
 
 // Stats store - game statistics with persistence

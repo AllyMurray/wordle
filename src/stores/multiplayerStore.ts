@@ -7,6 +7,7 @@ import type {
   GameState,
   ViewerGameState,
   PeerMessage,
+  BoggleMultiplayerState,
 } from '../types';
 import {
   NETWORK_CONFIG,
@@ -59,6 +60,8 @@ interface MultiplayerState {
   leaveSession: () => void;
   sendGameState: (state: GameState) => void;
   sendSuggestion: (word: string) => void;
+  sendBoggleState: (state: BoggleMultiplayerState) => void;
+  sendBoggleWord: (word: string) => void;
   clearSuggestion: () => void;
   acceptSuggestion: () => string | null;
   rejectSuggestion: () => void;
@@ -293,7 +296,12 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 return;
               }
 
-              if (messageId && (message.type === 'suggest-word' || message.type === 'request-state')) {
+              if (
+                messageId &&
+                (message.type === 'suggest-word' ||
+                  message.type === 'request-state' ||
+                  message.type === 'boggle-word')
+              ) {
                 sendAck(conn, messageId);
               }
 
@@ -301,6 +309,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 set({ pendingSuggestion: { word: message.word } });
               } else if (message.type === 'clear-suggestion') {
                 set({ pendingSuggestion: null });
+              } else if (message.type === 'boggle-word' && internal.onBoggleWordReceived) {
+                internal.onBoggleWordReceived(message.word);
               }
             });
 
@@ -540,6 +550,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               if (
                 messageId &&
                 (message.type === 'game-state' ||
+                  message.type === 'boggle-state' ||
                   message.type === 'suggestion-accepted' ||
                   message.type === 'suggestion-rejected')
               ) {
@@ -548,6 +559,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
               if (message.type === 'game-state' && internal.onGameStateReceived) {
                 internal.onGameStateReceived(message.state);
+              } else if (message.type === 'boggle-state' && internal.onBoggleStateReceived) {
+                internal.onBoggleStateReceived(message.state);
               } else if (
                 (message.type === 'suggestion-accepted' || message.type === 'suggestion-rejected') &&
                 internal.onSuggestionResponse
@@ -726,6 +739,30 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             internal,
             internal.connection,
             { type: 'suggest-word', word } as PeerMessage,
+            true
+          );
+        }
+      },
+
+      sendBoggleState: (state: BoggleMultiplayerState) => {
+        const { role } = get();
+        if (role === 'host' && internal.connection?.open) {
+          sendWithAck(
+            internal,
+            internal.connection,
+            { type: 'boggle-state', state } as PeerMessage,
+            true
+          );
+        }
+      },
+
+      sendBoggleWord: (word: string) => {
+        const { role } = get();
+        if (role === 'viewer' && internal.connection?.open) {
+          sendWithAck(
+            internal,
+            internal.connection,
+            { type: 'boggle-word', word } as PeerMessage,
             true
           );
         }
@@ -937,7 +974,12 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                   return;
                 }
 
-                if (messageId && (message.type === 'suggest-word' || message.type === 'request-state')) {
+                if (
+                  messageId &&
+                  (message.type === 'suggest-word' ||
+                    message.type === 'request-state' ||
+                    message.type === 'boggle-word')
+                ) {
                   sendAck(conn, messageId);
                 }
 
@@ -945,6 +987,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                   set({ pendingSuggestion: { word: message.word } });
                 } else if (message.type === 'clear-suggestion') {
                   set({ pendingSuggestion: null });
+                } else if (message.type === 'boggle-word' && internal.onBoggleWordReceived) {
+                  internal.onBoggleWordReceived(message.word);
                 }
               });
 
@@ -1060,6 +1104,16 @@ export const registerGameStateCallback = (callback: (state: ViewerGameState) => 
 
 export const registerSuggestionResponseCallback = (callback: (accepted: boolean) => void): void => {
   internal.onSuggestionResponse = callback;
+};
+
+export const registerBoggleStateCallback = (
+  callback: ((state: BoggleMultiplayerState) => void) | null
+): void => {
+  internal.onBoggleStateReceived = callback;
+};
+
+export const registerBoggleWordCallback = (callback: ((word: string) => void) | null): void => {
+  internal.onBoggleWordReceived = callback;
 };
 
 // Selector hooks for fine-grained subscriptions
