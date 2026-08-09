@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { act } from '@testing-library/react';
-import { useUIStore } from './uiStore';
+import { applyTheme, getInitialTheme, useUIStore } from './uiStore';
 
 describe('uiStore', () => {
   beforeEach(() => {
@@ -111,6 +111,27 @@ describe('uiStore', () => {
 
       act(() => closeStats());
       expect(useUIStore.getState().isStatsOpen).toBe(false);
+    });
+  });
+
+  describe('theme storage', () => {
+    it('falls back safely when stored preferences cannot be read', () => {
+      const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new DOMException('Storage blocked');
+      });
+
+      expect(['dark', 'light']).toContain(getInitialTheme());
+      getItem.mockRestore();
+    });
+
+    it('still applies the theme when persistence is blocked', () => {
+      const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new DOMException('Storage blocked');
+      });
+
+      expect(() => applyTheme('light')).not.toThrow();
+      expect(document.documentElement).toHaveAttribute('data-theme', 'light');
+      setItem.mockRestore();
     });
   });
 });
