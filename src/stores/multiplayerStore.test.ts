@@ -136,6 +136,7 @@ import {
   registerStateRequestCallback,
   registerBoggleStateCallback,
   registerBoggleWordCallback,
+  registerBoggleWordResultCallback,
 } from './multiplayerStore';
 import { loadPeerJS } from './peerConnection';
 import { NETWORK_CONFIG } from '../types';
@@ -1200,9 +1201,13 @@ describe('multiplayerStore', () => {
 
     it('should register and clear Boggle callbacks', () => {
       expect(() => registerBoggleStateCallback(vi.fn())).not.toThrow();
-      expect(() => registerBoggleWordCallback(vi.fn())).not.toThrow();
+      expect(() =>
+        registerBoggleWordCallback(vi.fn(() => ({ word: 'TEST', accepted: true })))
+      ).not.toThrow();
+      expect(() => registerBoggleWordResultCallback(vi.fn())).not.toThrow();
       expect(() => registerBoggleStateCallback(null)).not.toThrow();
       expect(() => registerBoggleWordCallback(null)).not.toThrow();
+      expect(() => registerBoggleWordResultCallback(null)).not.toThrow();
     });
   });
 
@@ -1237,7 +1242,11 @@ describe('multiplayerStore', () => {
     });
 
     it('should deliver and acknowledge viewer Boggle words to the host', async () => {
-      const callback = vi.fn();
+      const callback = vi.fn(() => ({
+        word: 'TEST',
+        accepted: false,
+        reason: 'Already found',
+      }));
       registerBoggleWordCallback(callback);
       act(() => {
         useMultiplayerStore.getState().hostGame('boggle');
@@ -1262,6 +1271,15 @@ describe('multiplayerStore', () => {
         type: 'ack',
         messageId: 'boggle-word-1',
       });
+      expect(viewerConnection.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'boggle-word-result',
+          word: 'TEST',
+          accepted: false,
+          reason: 'Already found',
+          _messageId: expect.any(String),
+        })
+      );
       registerBoggleWordCallback(null);
     });
 
@@ -1310,6 +1328,37 @@ describe('multiplayerStore', () => {
         messageId: 'boggle-state-1',
       });
       registerBoggleStateCallback(null);
+    });
+
+    it('delivers and acknowledges a host word result to the viewer', async () => {
+      const callback = vi.fn();
+      registerBoggleWordResultCallback(callback);
+      act(() => useMultiplayerStore.getState().joinGame('boggle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        lastCreatedConnection?._triggerData({
+          type: 'boggle-word-result',
+          word: 'TEST',
+          accepted: false,
+          reason: 'Already found',
+          _messageId: 'word-result-1',
+        });
+      });
+
+      expect(callback).toHaveBeenCalledWith({
+        word: 'TEST',
+        accepted: false,
+        reason: 'Already found',
+      });
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'word-result-1',
+      });
+      registerBoggleWordResultCallback(null);
     });
 
     it('should acknowledge but not reapply a retried Boggle snapshot', async () => {

@@ -20,6 +20,22 @@
   color: var(--color-text-secondary);
 }
 
+.boggle-word-feedback {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.boggle-word-feedback--accepted {
+  background: var(--wordle-correct);
+  color: white;
+}
+
+.boggle-word-feedback--rejected {
+  background: var(--color-error);
+  color: white;
+}
+
 /* Mode selection screen */
 .mode-select {
   display: flex;

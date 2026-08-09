@@ -161,6 +161,14 @@ describe('peer message validation', () => {
       validatePeerMessage({ type: 'suggest-word', word: 'CRANE', _messageId: 'suggestion-1' })
         .success
     ).toBe(true);
+    expect(
+      validatePeerMessage({
+        type: 'boggle-word-result',
+        word: 'QUA',
+        accepted: false,
+        reason: 'Already found',
+      }).success
+    ).toBe(true);
   });
 
   it('rejects malformed Wordle state shapes', () => {

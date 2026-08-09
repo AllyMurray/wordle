@@ -2,7 +2,14 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBoggleStore } from './store';
 import { useTimerStore } from '../../stores/timerStore';
-import { BoggleBoard, Timer, WordList, AllWordsList, BoggleLoadingState } from './components';
+import {
+  BoggleBoard,
+  Timer,
+  WordList,
+  AllWordsList,
+  BoggleLoadingState,
+  BoggleWordFeedback,
+} from './components';
 import { GameLayout } from '../../components/GameLayout/GameLayout';
 import Lobby from '../../components/Lobby';
 import ErrorBoundary from '../../components/ErrorBoundary';
@@ -10,6 +17,7 @@ import { ConnectionAlert } from '../../components/ConnectionAlert';
 import {
   registerBoggleStateCallback,
   registerBoggleWordCallback,
+  registerBoggleWordResultCallback,
   registerStateRequestCallback,
   useMultiplayerStore,
   useStatsStore,
@@ -18,6 +26,7 @@ import { useMultiplayerReconnection } from '../../hooks/useMultiplayerReconnecti
 import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';
 import type { GameMode } from '../../types';
+import type { BoggleWordResult } from '../../types';
 import './BoggleGame.css';
 
 const GAME_DURATION = 180; // 3 minutes
@@ -29,6 +38,7 @@ export default function BoggleGame() {
   const [searchParams] = useSearchParams();
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [loadingError, setLoadingError] = useState('');
+  const [wordFeedback, setWordFeedback] = useState<BoggleWordResult | null>(null);
 
   // Game phase state machine: lobby → modeSelect → loading → playing → gameOver
   const [gamePhase, setGamePhase] = useState<GamePhase>('lobby');
@@ -191,11 +201,29 @@ export default function BoggleGame() {
     if (!isHost) return;
 
     registerBoggleWordCallback((word) => {
-      submitWordByText(word);
+      const result = submitWordByText(word);
+      return {
+        word: result.word || word,
+        accepted: result.success,
+        ...(result.reason ? { reason: result.reason } : {}),
+      };
     });
 
     return () => registerBoggleWordCallback(null);
   }, [isHost, submitWordByText]);
+
+  useEffect(() => {
+    if (!isViewer) return;
+
+    registerBoggleWordResultCallback(setWordFeedback);
+    return () => registerBoggleWordResultCallback(null);
+  }, [isViewer]);
+
+  useEffect(() => {
+    if (!wordFeedback) return;
+    const timeout = setTimeout(() => setWordFeedback(null), 2500);
+    return () => clearTimeout(timeout);
+  }, [wordFeedback]);
 
   // Broadcast host-authoritative state, including the timer, on every change.
   useEffect(() => {
@@ -289,6 +317,7 @@ export default function BoggleGame() {
   const handleSubmit = useCallback(() => {
     if (isViewer) {
       if (currentWord.length >= 3) {
+        setWordFeedback(null);
         sendBoggleWord(currentWord);
       }
       clearSelection();
@@ -519,6 +548,8 @@ export default function BoggleGame() {
             </div>
           </ErrorBoundary>
         )}
+
+        <BoggleWordFeedback result={wordFeedback} />
 
         <div className="boggle-game-bar">
           <div className="boggle-stats-bar">

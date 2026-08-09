@@ -108,6 +108,7 @@ describe('Integration: P2P Message Validation', () => {
         },
       },
       { type: 'boggle-word', word: 'TEST' },
+      { type: 'boggle-word-result', word: 'TEST', accepted: false, reason: 'Already found' },
     ];
 
     validMessages.forEach((message) => {

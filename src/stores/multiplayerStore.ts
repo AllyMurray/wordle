@@ -8,6 +8,7 @@ import type {
   ViewerGameState,
   PeerMessage,
   BoggleMultiplayerState,
+  BoggleWordResult,
 } from '../types';
 import {
   NETWORK_CONFIG,
@@ -348,7 +349,18 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               } else if (message.type === 'clear-suggestion') {
                 set({ pendingSuggestion: null });
               } else if (message.type === 'boggle-word' && internal.onBoggleWordReceived) {
-                internal.onBoggleWordReceived(message.word);
+                const result = internal.onBoggleWordReceived(message.word);
+                sendWithAck(
+                  internal,
+                  conn,
+                  {
+                    type: 'boggle-word-result',
+                    word: result.word,
+                    accepted: result.accepted,
+                    ...(result.reason ? { reason: result.reason } : {}),
+                  } as PeerMessage,
+                  true
+                );
               }
             });
 
@@ -618,6 +630,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 messageId &&
                 (message.type === 'game-state' ||
                   message.type === 'boggle-state' ||
+                  message.type === 'boggle-word-result' ||
                   message.type === 'suggestion-accepted' ||
                   message.type === 'suggestion-rejected')
               ) {
@@ -632,6 +645,15 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 if (message.revision <= internal.lastReceivedBoggleRevision) return;
                 internal.lastReceivedBoggleRevision = message.revision;
                 internal.onBoggleStateReceived(message.state);
+              } else if (
+                message.type === 'boggle-word-result' &&
+                internal.onBoggleWordResultReceived
+              ) {
+                internal.onBoggleWordResultReceived({
+                  word: message.word,
+                  accepted: message.accepted,
+                  ...(message.reason ? { reason: message.reason } : {}),
+                });
               } else if (
                 (message.type === 'suggestion-accepted' || message.type === 'suggestion-rejected') &&
                 internal.onSuggestionResponse
@@ -1087,7 +1109,18 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 } else if (message.type === 'clear-suggestion') {
                   set({ pendingSuggestion: null });
                 } else if (message.type === 'boggle-word' && internal.onBoggleWordReceived) {
-                  internal.onBoggleWordReceived(message.word);
+                  const result = internal.onBoggleWordReceived(message.word);
+                  sendWithAck(
+                    internal,
+                    conn,
+                    {
+                      type: 'boggle-word-result',
+                      word: result.word,
+                      accepted: result.accepted,
+                      ...(result.reason ? { reason: result.reason } : {}),
+                    } as PeerMessage,
+                    true
+                  );
                 }
               });
 
@@ -1225,8 +1258,16 @@ export const registerBoggleStateCallback = (
   internal.onBoggleStateReceived = callback;
 };
 
-export const registerBoggleWordCallback = (callback: ((word: string) => void) | null): void => {
+export const registerBoggleWordCallback = (
+  callback: ((word: string) => BoggleWordResult) | null
+): void => {
   internal.onBoggleWordReceived = callback;
+};
+
+export const registerBoggleWordResultCallback = (
+  callback: ((result: BoggleWordResult) => void) | null
+): void => {
+  internal.onBoggleWordResultReceived = callback;
 };
 
 // Selector hooks for fine-grained subscriptions

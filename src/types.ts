@@ -279,6 +279,12 @@ export interface BoggleMultiplayerState {
   timedMode: boolean;
 }
 
+export interface BoggleWordResult {
+  word: string;
+  accepted: boolean;
+  reason?: string;
+}
+
 // Keyboard status map (letter -> status)
 export type KeyboardStatus = Record<string, LetterStatus>;
 
@@ -434,6 +440,14 @@ const BoggleWordMessageSchema = z.strictObject({
   ...MessageMetadataShape,
 });
 
+const BoggleWordResultMessageSchema = z.strictObject({
+  type: z.literal('boggle-word-result'),
+  word: BoggleWordSchema,
+  accepted: z.boolean(),
+  reason: z.string().min(1).max(100).optional(),
+  ...MessageMetadataShape,
+});
+
 // Union schema for all peer messages
 export const PeerMessageSchema = z.discriminatedUnion('type', [
   RequestStateMessageSchema,
@@ -450,6 +464,7 @@ export const PeerMessageSchema = z.discriminatedUnion('type', [
   AuthFailureMessageSchema,
   BoggleStateMessageSchema,
   BoggleWordMessageSchema,
+  BoggleWordResultMessageSchema,
 ]);
 
 // Inferred PeerMessage type from schema
