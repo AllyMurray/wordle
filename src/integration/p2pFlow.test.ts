@@ -91,10 +91,12 @@ describe('Integration: P2P Message Validation', () => {
         state: {
           board: {
             grid: [
-              ['T', 'E'],
-              ['S', 'T'],
+              ['T', 'E', 'S', 'T'],
+              ['A', 'R', 'E', 'A'],
+              ['G', 'A', 'M', 'E'],
+              ['W', 'O', 'R', 'D'],
             ],
-            size: 2,
+            size: 4,
           },
           foundWords: ['TEST'],
           score: 1,

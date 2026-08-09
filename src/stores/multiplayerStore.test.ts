@@ -1185,10 +1185,12 @@ describe('multiplayerStore', () => {
       const boggleState = {
         board: {
           grid: [
-            ['T', 'E'],
-            ['S', 'T'],
+            ['T', 'E', 'S', 'T'],
+            ['A', 'R', 'E', 'A'],
+            ['G', 'A', 'M', 'E'],
+            ['W', 'O', 'R', 'D'],
           ],
-          size: 2,
+          size: 4,
         },
         foundWords: ['TEST'],
         score: 1,
@@ -1225,7 +1227,15 @@ describe('multiplayerStore', () => {
       const message = {
         type: 'boggle-state',
         state: {
-          board: { grid: [['T']], size: 1 },
+          board: {
+            grid: [
+              ['T', 'E', 'S', 'T'],
+              ['A', 'R', 'E', 'A'],
+              ['G', 'A', 'M', 'E'],
+              ['W', 'O', 'R', 'D'],
+            ],
+            size: 4,
+          },
           foundWords: [],
           score: 0,
           gameOver: false,
@@ -1509,7 +1519,7 @@ describe('multiplayerStore', () => {
       // Send 3 failed auth attempts
       for (let i = 0; i < 3; i++) {
         act(() => {
-          mockViewerConn._triggerData({ type: 'auth-request', pin: 'wrong' });
+          mockViewerConn._triggerData({ type: 'auth-request', pin: '0000' });
         });
       }
 

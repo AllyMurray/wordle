@@ -304,111 +304,131 @@ export type SuggestionStatus = null | 'pending' | 'accepted' | 'rejected' | 'inv
 
 // Schema for letter status
 const LetterStatusSchema = z.enum(['correct', 'present', 'absent']);
+const MessageMetadataShape = {
+  _messageId: z.string().min(1).max(128).optional(),
+};
+const WordleWordSchema = z.string().regex(/^[A-Z]{5}$/);
+const BoggleWordSchema = z.string().regex(/^[A-Z]{3,17}$/);
 
 // Schema for a guess
-const GuessSchema = z.object({
-  word: z.string(),
-  status: z.array(LetterStatusSchema),
+const GuessSchema = z.strictObject({
+  word: WordleWordSchema,
+  status: z.array(LetterStatusSchema).length(GAME_CONFIG.WORD_LENGTH),
 });
 
 // Schema for viewer game state (solution hidden for security)
-const ViewerGameStateSchema = z.object({
-  guesses: z.array(GuessSchema),
-  currentGuess: z.string(),
+const ViewerGameStateSchema = z.strictObject({
+  guesses: z.array(GuessSchema).max(GAME_CONFIG.MAX_GUESSES),
+  currentGuess: z.string().regex(/^[A-Z]{0,5}$/),
   gameOver: z.boolean(),
   won: z.boolean(),
-  message: z.string(),
+  message: z.string().max(200),
 });
 
 // Schema for request-state message
-const RequestStateMessageSchema = z.object({
+const RequestStateMessageSchema = z.strictObject({
   type: z.literal('request-state'),
+  ...MessageMetadataShape,
 });
 
 // Schema for game-state message (sent to viewer, solution hidden)
-const GameStateMessageSchema = z.object({
+const GameStateMessageSchema = z.strictObject({
   type: z.literal('game-state'),
   state: ViewerGameStateSchema,
+  ...MessageMetadataShape,
 });
 
 // Schema for suggest-word message
-const SuggestWordMessageSchema = z.object({
+const SuggestWordMessageSchema = z.strictObject({
   type: z.literal('suggest-word'),
-  word: z.string(),
+  word: WordleWordSchema,
+  ...MessageMetadataShape,
 });
 
 // Schema for clear-suggestion message
-const ClearSuggestionMessageSchema = z.object({
+const ClearSuggestionMessageSchema = z.strictObject({
   type: z.literal('clear-suggestion'),
+  ...MessageMetadataShape,
 });
 
 // Schema for suggestion-accepted message
-const SuggestionAcceptedMessageSchema = z.object({
+const SuggestionAcceptedMessageSchema = z.strictObject({
   type: z.literal('suggestion-accepted'),
+  ...MessageMetadataShape,
 });
 
 // Schema for suggestion-rejected message
-const SuggestionRejectedMessageSchema = z.object({
+const SuggestionRejectedMessageSchema = z.strictObject({
   type: z.literal('suggestion-rejected'),
+  ...MessageMetadataShape,
 });
 
 // Schema for message acknowledgment
-const AckMessageSchema = z.object({
+const AckMessageSchema = z.strictObject({
   type: z.literal('ack'),
-  messageId: z.string(),
+  messageId: z.string().min(1).max(128),
+  ...MessageMetadataShape,
 });
 
 // Schema for heartbeat ping
-const PingMessageSchema = z.object({
+const PingMessageSchema = z.strictObject({
   type: z.literal('ping'),
-  timestamp: z.number(),
+  timestamp: z.number().int().nonnegative().finite(),
+  ...MessageMetadataShape,
 });
 
 // Schema for heartbeat pong
-const PongMessageSchema = z.object({
+const PongMessageSchema = z.strictObject({
   type: z.literal('pong'),
-  timestamp: z.number(),
+  timestamp: z.number().int().nonnegative().finite(),
+  ...MessageMetadataShape,
 });
 
 // Schema for authentication request (viewer sends PIN to host)
-const AuthRequestMessageSchema = z.object({
+const AuthRequestMessageSchema = z.strictObject({
   type: z.literal('auth-request'),
-  pin: z.string(),
+  pin: z.union([z.literal(''), z.string().regex(/^\d{4,8}$/)]),
+  ...MessageMetadataShape,
 });
 
 // Schema for authentication success (host approves connection)
-const AuthSuccessMessageSchema = z.object({
+const AuthSuccessMessageSchema = z.strictObject({
   type: z.literal('auth-success'),
+  ...MessageMetadataShape,
 });
 
 // Schema for authentication failure (host rejects connection)
-const AuthFailureMessageSchema = z.object({
+const AuthFailureMessageSchema = z.strictObject({
   type: z.literal('auth-failure'),
-  reason: z.string(),
+  reason: z.string().min(1).max(200),
+  ...MessageMetadataShape,
 });
 
-const BoggleBoardSchema = z.object({
-  grid: z.array(z.array(z.string())),
-  size: z.number().int().positive(),
+const BoggleTileSchema = z.union([z.literal('Qu'), z.string().regex(/^[A-Z]$/)]);
+const BoggleBoardSchema = z.strictObject({
+  grid: z.array(z.array(BoggleTileSchema).length(4)).length(4),
+  size: z.literal(4),
 });
 
-const BoggleMultiplayerStateSchema = z.object({
+const BoggleMultiplayerStateSchema = z.strictObject({
   board: BoggleBoardSchema,
-  foundWords: z.array(z.string()),
-  score: z.number().nonnegative(),
+  foundWords: z.array(BoggleWordSchema).max(5_000),
+  score: z.number().int().nonnegative().max(1_000_000),
   gameOver: z.boolean(),
-  timeRemaining: z.number().int().nonnegative(),
+  timeRemaining: z.number().int().nonnegative().max(86_400),
   timedMode: z.boolean(),
 });
 
-const BoggleStateMessageSchema = z.object({
+const BoggleStateMessageSchema = z.strictObject({
   type: z.literal('boggle-state'),
   state: BoggleMultiplayerStateSchema,
+  ...MessageMetadataShape,
 });
 
-const BoggleWordMessageSchema = z.object({
+const BoggleWordMessageSchema = z.strictObject({
   type: z.literal('boggle-word'),
-  word: z.string().min(3).max(32),
+  word: BoggleWordSchema,
+  ...MessageMetadataShape,
 });
 
 // Union schema for all peer messages
