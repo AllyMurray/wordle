@@ -1,5 +1,5 @@
 import { memo, useCallback } from 'react';
-import type { KeyboardStatus } from '../types';
+import type { KeyboardStatus } from '../../../types';
 import './WordleKeyboard.css';
 
 interface WordleKeyboardProps {

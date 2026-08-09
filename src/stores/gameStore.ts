@@ -1,8 +1,9 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { getRandomWord, isValidGuess } from '../data/words';
+import { getRandomWord } from '../data/words';
 import type { Guess, LetterStatus, GameState, KeyboardStatus } from '../types';
 import { GAME_CONFIG } from '../types';
+import { getLetterStatus, isValidWord } from '../games/wordle/logic';
 
 const WORD_LENGTH = GAME_CONFIG.WORD_LENGTH;
 const MAX_GUESSES = GAME_CONFIG.MAX_GUESSES;
@@ -41,42 +42,6 @@ interface GameStoreState {
   getLetterStatus: (guess: string, solutionWord: string) => LetterStatus[];
   getKeyboardStatus: () => KeyboardStatus;
 }
-
-/**
- * Two-pass algorithm to determine letter statuses.
- * Correctly handles duplicate letters by:
- * 1. First marking exact position matches (green)
- * 2. Then marking wrong-position matches (yellow) with remaining letters
- */
-const getLetterStatus = (guess: string, solutionWord: string): LetterStatus[] => {
-  const result: LetterStatus[] = Array(WORD_LENGTH).fill('absent') as LetterStatus[];
-  const solutionArray: (string | null)[] = solutionWord.split('');
-  const guessArray = guess.split('');
-
-  // Pass 1: Find exact matches
-  guessArray.forEach((letter, i) => {
-    if (letter === solutionArray[i]) {
-      result[i] = 'correct';
-      solutionArray[i] = null;
-    }
-  });
-
-  // Pass 2: Find wrong-position matches
-  guessArray.forEach((letter, i) => {
-    if (result[i] === 'correct') return;
-    const foundIndex = solutionArray.findIndex((s) => s === letter);
-    if (foundIndex !== -1) {
-      result[i] = 'present';
-      solutionArray[foundIndex] = null;
-    }
-  });
-
-  return result;
-};
-
-const isValidWord = (word: string): boolean => {
-  return isValidGuess(word);
-};
 
 // Timer ID for shake/message cleanup - tracked at module level to allow cancellation
 let shakeTimerId: ReturnType<typeof setTimeout> | null = null;

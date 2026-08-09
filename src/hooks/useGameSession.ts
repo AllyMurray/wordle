@@ -271,27 +271,30 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
     [handleKeyPress, viewerGuess, setSuggestionStatus]
   );
 
-  useWindowKeyDown(gameMode === 'multiplayer' && !isStatsOpen, handleKeyDown);
+  useWindowKeyDown(gameMode !== null && !isStatsOpen, handleKeyDown);
 
   // Game session action handlers
   const handlePlaySolo = useCallback((): void => {
+    newGame();
     setGameMode('solo');
-  }, [setGameMode]);
+  }, [newGame, setGameMode]);
 
   const handleHost = useCallback(
     (pin?: string): void => {
+      newGame();
       hostGame(gameId, pin);
       setGameMode('multiplayer');
     },
-    [hostGame, setGameMode, gameId]
+    [newGame, hostGame, setGameMode, gameId]
   );
 
   const handleJoin = useCallback(
     (code: string, pin?: string): void => {
+      newGame();
       joinGame(gameId, code, pin);
       setGameMode('multiplayer');
     },
-    [joinGame, setGameMode, gameId]
+    [newGame, joinGame, setGameMode, gameId]
   );
 
   const handleLeave = useCallback((): void => {

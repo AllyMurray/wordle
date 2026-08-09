@@ -1,5 +1,5 @@
-import type { LetterStatus } from './types';
-import { isValidGuess } from './words';
+import type { LetterStatus } from '../../types';
+import { isValidGuess } from '../../data/words';
 
 const WORD_LENGTH = 5;
 

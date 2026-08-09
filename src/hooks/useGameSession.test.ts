@@ -118,6 +118,29 @@ describe('useGameSession', () => {
 
       expect(result.current.gameMode).toBe('solo');
     });
+
+    it('starts solo play with a fresh game in the shared store', () => {
+      act(() => {
+        useGameStore.setState({
+          guesses: [
+            {
+              word: 'APPLE',
+              status: ['absent', 'absent', 'absent', 'absent', 'present'],
+            },
+          ],
+          currentGuess: 'GR',
+          gameOver: true,
+        });
+      });
+
+      const { result } = renderHook(() => useGameSession());
+
+      act(() => result.current.handlePlaySolo());
+
+      expect(result.current.guesses).toEqual([]);
+      expect(result.current.currentGuess).toBe('');
+      expect(result.current.gameOver).toBe(false);
+    });
   });
 
   describe('handleHost', () => {
