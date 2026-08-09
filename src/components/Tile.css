@@ -34,7 +34,7 @@
 .tile.present {
   background-color: var(--wordle-present);
   border-color: var(--wordle-present);
-  color: white;
+  color: var(--color-on-present);
   animation: flip 0.5s ease forwards;
   animation-delay: var(--tile-delay, 0ms);
 }

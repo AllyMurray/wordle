@@ -44,7 +44,7 @@
 .current-word:not(.current-word--empty) {
   background: var(--color-present);
   border-color: var(--color-present);
-  color: white;
+  color: var(--color-on-present);
   box-shadow: 0 2px 8px var(--color-present-glow);
 }
 
@@ -97,7 +97,7 @@
 .boggle-tile--selected {
   background: var(--color-present);
   border-color: var(--color-present);
-  color: white;
+  color: var(--color-on-present);
   transform: scale(1.08);
   box-shadow: 0 4px 12px var(--color-present-glow);
 }
@@ -139,7 +139,7 @@
 .boggle-selection-actions .boggle-submit-word:not(:disabled) {
   border-color: var(--color-present);
   background: var(--color-present);
-  color: var(--color-bg-primary);
+  color: var(--color-on-present);
 }
 
 .boggle-selection-actions button:disabled {

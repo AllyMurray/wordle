@@ -62,7 +62,7 @@
 
 .key.present {
   background-color: var(--wordle-present);
-  color: white;
+  color: var(--color-on-present);
   box-shadow: 0 2px 8px var(--wordle-present-glow);
 }
 

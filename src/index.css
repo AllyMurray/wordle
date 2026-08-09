@@ -66,6 +66,7 @@
   --color-present: #D4A853;
   --color-present-hover: #C49A48;
   --color-present-glow: rgba(212, 168, 83, 0.25);
+  --color-on-present: #0B0F14;
 
   /* Absent - Contextual (changes with theme) */
   --color-error: #E85A50;

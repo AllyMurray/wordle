@@ -118,7 +118,7 @@
 
 .lobby-btn.host {
   background-color: var(--color-present);
-  color: white;
+  color: var(--color-on-present);
 }
 
 .lobby-btn.host:hover {
