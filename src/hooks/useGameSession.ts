@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { useLatest } from './useLatest';
 import { useMultiplayerReconnection } from './useMultiplayerReconnection';
 import { useWindowKeyDown } from './useWindowKeyDown';
-import { WORDS } from '../data/words';
+import { isValidGuess } from '../data/words';
 import {
   useGameStore,
   useMultiplayerStore,
@@ -135,7 +135,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
   const handleViewerGuessChange = useCallback(
     (guess: string): void => {
       if (guess.length === WORD_LENGTH_COUNT) {
-        if (WORDS.includes(guess.toLowerCase())) {
+        if (isValidGuess(guess)) {
           setSuggestionStatus('pending');
           sendSuggestion(guess);
         } else {
@@ -258,7 +258,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
       if (e.key === 'Enter') {
         const result = handleKeyPress('ENTER');
         if (result === 'submit-suggestion' && viewerGuess.length === WORD_LENGTH_COUNT) {
-          if (WORDS.includes(viewerGuess.toLowerCase())) {
+          if (isValidGuess(viewerGuess)) {
             setSuggestionStatus('pending');
           }
         }

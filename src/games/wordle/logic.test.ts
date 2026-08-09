@@ -47,6 +47,12 @@ describe('isValidWord', () => {
     expect(isValidWord('CRANE')).toBe(true);
   });
 
+  it('accepts valid guesses outside the curated solution list', () => {
+    expect(isValidWord('ADIEU')).toBe(true);
+    expect(isValidWord('AUDIO')).toBe(true);
+    expect(isValidWord('NYMPH')).toBe(true);
+  });
+
   it('should return false for invalid words', () => {
     expect(isValidWord('XXXXX')).toBe(false);
     expect(isValidWord('ZZZZZ')).toBe(false);

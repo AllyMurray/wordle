@@ -1,4 +1,6 @@
-// Common 5-letter words for Wordle
+import { ALLOWED_GUESSES } from './allowedGuesses';
+
+// Familiar five-letter words used as possible solutions.
 export const WORDS: readonly string[] = [
   'about', 'above', 'abuse', 'actor', 'acute', 'admit', 'adopt', 'adult', 'after', 'again',
   'agent', 'agree', 'ahead', 'alarm', 'album', 'alert', 'alien', 'align', 'alike', 'alive',
@@ -86,7 +88,12 @@ export const WORDS: readonly string[] = [
   'zebra', 'zones'
 ];
 
-// Get a random word from the list
+const VALID_GUESSES = new Set([...ALLOWED_GUESSES, ...WORDS]);
+
+/** Check whether a guess is in the comprehensive five-letter guess dictionary. */
+export const isValidGuess = (word: string): boolean => VALID_GUESSES.has(word.toLowerCase());
+
+// Get a random word from the curated solution list.
 export const getRandomWord = (): string => {
   const randomIndex = Math.floor(Math.random() * WORDS.length);
   const word = WORDS[randomIndex];

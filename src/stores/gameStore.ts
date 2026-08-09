@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
-import { getRandomWord, WORDS } from '../data/words';
+import { getRandomWord, isValidGuess } from '../data/words';
 import type { Guess, LetterStatus, GameState, KeyboardStatus } from '../types';
 import { GAME_CONFIG } from '../types';
 
@@ -75,7 +75,7 @@ const getLetterStatus = (guess: string, solutionWord: string): LetterStatus[] =>
 };
 
 const isValidWord = (word: string): boolean => {
-  return WORDS.includes(word.toLowerCase());
+  return isValidGuess(word);
 };
 
 // Timer ID for shake/message cleanup - tracked at module level to allow cancellation
