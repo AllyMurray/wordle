@@ -27,4 +27,33 @@ describe('useWindowKeyDown', () => {
 
     expect(handler).toHaveBeenCalledOnce();
   });
+
+  it.each([
+    ['button', '<button type="button">Action</button>'],
+    ['link', '<a href="/other">Other page</a>'],
+    ['input', '<input />'],
+    ['editable content', '<div contenteditable="true"></div>'],
+  ])('ignores keys originating from a focused %s', (_label, markup) => {
+    const handler = vi.fn();
+    const container = document.createElement('div');
+    container.innerHTML = markup;
+    const control = container.firstElementChild as HTMLElement;
+    document.body.append(control);
+
+    renderHook(() => useWindowKeyDown(true, handler));
+    control.focus();
+    control.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    expect(handler).not.toHaveBeenCalled();
+    control.remove();
+  });
+
+  it('continues to handle keys from the game page', () => {
+    const handler = vi.fn();
+    renderHook(() => useWindowKeyDown(true, handler));
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'A' }));
+
+    expect(handler).toHaveBeenCalledOnce();
+  });
 });

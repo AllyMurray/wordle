@@ -1,5 +1,21 @@
 import { useEffect } from 'react';
 
+const INTERACTIVE_SELECTOR = [
+  'input',
+  'textarea',
+  'select',
+  'button',
+  'a[href]',
+  '[contenteditable="true"]',
+  '[role="button"]',
+  '[role="link"]',
+].join(',');
+
+const isFromInteractiveElement = (event: KeyboardEvent): boolean => {
+  const target = event.target;
+  return target instanceof Element && target.closest(INTERACTIVE_SELECTOR) !== null;
+};
+
 export const useWindowKeyDown = (
   enabled: boolean,
   handler: (event: KeyboardEvent) => void
@@ -7,7 +23,12 @@ export const useWindowKeyDown = (
   useEffect(() => {
     if (!enabled) return;
 
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
+    const handleWindowKeyDown = (event: KeyboardEvent): void => {
+      if (isFromInteractiveElement(event)) return;
+      handler(event);
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown);
+    return () => window.removeEventListener('keydown', handleWindowKeyDown);
   }, [enabled, handler]);
 };
