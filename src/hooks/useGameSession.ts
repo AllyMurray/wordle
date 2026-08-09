@@ -120,6 +120,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
   const suggestionStatus = useUIStore((s) => s.suggestionStatus);
   const setSuggestionStatus = useUIStore((s) => s.setSuggestionStatus);
   const isStatsOpen = useUIStore((s) => s.isStatsOpen);
+  const closeStats = useUIStore((s) => s.closeStats);
 
   const isHost = role === 'host';
   const isViewer = role === 'viewer';
@@ -276,33 +277,41 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
 
   // Game session action handlers
   const handlePlaySolo = useCallback((): void => {
+    closeStats();
+    setSuggestionStatus(null);
     newGame();
     setGameMode('solo');
-  }, [newGame, setGameMode]);
+  }, [closeStats, newGame, setGameMode, setSuggestionStatus]);
 
   const handleHost = useCallback(
     (pin?: string): void => {
+      closeStats();
+      setSuggestionStatus(null);
       newGame();
       hostGame(gameId, pin);
       setGameMode('multiplayer');
     },
-    [newGame, hostGame, setGameMode, gameId]
+    [closeStats, newGame, hostGame, setGameMode, setSuggestionStatus, gameId]
   );
 
   const handleJoin = useCallback(
     (code: string, pin?: string): void => {
+      closeStats();
+      setSuggestionStatus(null);
       newGame();
       joinGame(gameId, code, pin);
       setGameMode('multiplayer');
     },
-    [newGame, joinGame, setGameMode, gameId]
+    [closeStats, newGame, joinGame, setGameMode, setSuggestionStatus, gameId]
   );
 
   const handleLeave = useCallback((): void => {
     leaveSession();
+    closeStats();
+    setSuggestionStatus(null);
     setGameMode(null);
     newGame();
-  }, [leaveSession, setGameMode, newGame]);
+  }, [leaveSession, closeStats, setSuggestionStatus, setGameMode, newGame]);
 
   const handleNewGame = useCallback((): void => {
     newGame();

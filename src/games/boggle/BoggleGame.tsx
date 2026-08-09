@@ -304,19 +304,21 @@ export default function BoggleGame() {
 
   const handleBackToLobby = useCallback(() => {
     stopTimer();
+    closeStats();
     resetGame();
     leaveSession();
     setLocalGameMode(null);
     setTimedMode(true);
     setLoadingError('');
     setGamePhase('lobby');
-  }, [stopTimer, resetGame, leaveSession]);
+  }, [stopTimer, closeStats, resetGame, leaveSession]);
 
   const handleRouteCleanup = useCallback(() => {
     stopTimer();
+    closeStats();
     resetGame();
     leaveSession();
-  }, [stopTimer, resetGame, leaveSession]);
+  }, [stopTimer, closeStats, resetGame, leaveSession]);
 
   useGameRouteCleanup(handleRouteCleanup);
 
@@ -325,9 +327,10 @@ export default function BoggleGame() {
 
   const handleNewGame = useCallback(() => {
     setSelectedWord(null);
+    closeStats();
     setLoadingError('');
     setGamePhase('loading');
-  }, []);
+  }, [closeStats]);
 
   const handleSubmit = useCallback(() => {
     if (isViewer) {

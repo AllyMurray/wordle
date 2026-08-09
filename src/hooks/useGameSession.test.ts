@@ -245,6 +245,22 @@ describe('useGameSession', () => {
       expect(result.current.guesses).toEqual([]);
       expect(result.current.currentGuess).toBe('');
     });
+
+    it('clears transient UI state on leave', () => {
+      act(() => {
+        useUIStore.setState({
+          gameMode: 'multiplayer',
+          isStatsOpen: true,
+          suggestionStatus: 'pending',
+        });
+      });
+      const { result } = renderHook(() => useGameSession());
+
+      act(() => result.current.handleLeave());
+
+      expect(useUIStore.getState().isStatsOpen).toBe(false);
+      expect(useUIStore.getState().suggestionStatus).toBeNull();
+    });
   });
 
   describe('handleNewGame', () => {
