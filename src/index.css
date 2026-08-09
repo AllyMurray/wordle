@@ -71,12 +71,12 @@
   --color-error: #E85A50;
 
   /* Wordle feedback - separate from the app's coral/amber accent palette */
-  --wordle-correct: #2E7D32;
-  --wordle-correct-hover: #256629;
-  --wordle-correct-glow: rgba(46, 125, 50, 0.3);
-  --wordle-present: #A96500;
-  --wordle-present-hover: #8C5400;
-  --wordle-present-glow: rgba(169, 101, 0, 0.3);
+  --wordle-correct: #3D8257;
+  --wordle-correct-hover: #326C49;
+  --wordle-correct-glow: rgba(61, 130, 87, 0.3);
+  --wordle-present: var(--color-present);
+  --wordle-present-hover: var(--color-present-hover);
+  --wordle-present-glow: var(--color-present-glow);
 
   /* Accent - Electric Teal */
   --color-accent: #38BDF8;
