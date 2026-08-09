@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { z } from 'zod';
 import type { GameStatistics, GameMode } from '../types';
 import { DEFAULT_STATISTICS, recordGameResult, STATS_STORAGE_KEY } from '../types';
 
@@ -34,14 +35,47 @@ export const DEFAULT_BOGGLE_STATISTICS: BoggleStatistics = {
   averageScore: 0,
 };
 
+const countSchema = z.number().finite().int().nonnegative();
+const WordleStatisticsSchema = z.strictObject({
+  gamesPlayed: countSchema,
+  gamesWon: countSchema,
+  currentStreak: countSchema,
+  maxStreak: countSchema,
+  guessDistribution: z.tuple([
+    countSchema,
+    countSchema,
+    countSchema,
+    countSchema,
+    countSchema,
+    countSchema,
+  ]),
+  lastGameDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  soloGamesPlayed: countSchema,
+  multiplayerGamesPlayed: countSchema,
+});
+const BoggleStatisticsSchema = z.strictObject({
+  gamesPlayed: countSchema,
+  soloGamesPlayed: countSchema,
+  multiplayerGamesPlayed: countSchema,
+  bestScore: countSchema,
+  mostWords: countSchema,
+  totalScore: countSchema,
+  averageScore: z.number().finite().nonnegative(),
+});
+
 export const migrateStatsState = (persistedState: unknown) => {
-  const state = persistedState as Partial<
-    Pick<StatsState, 'stats' | 'boggleStats'>
-  >;
+  const state =
+    typeof persistedState === 'object' && persistedState !== null
+      ? (persistedState as Record<string, unknown>)
+      : {};
+  const stats = WordleStatisticsSchema.safeParse(state.stats);
+  const boggleStats = BoggleStatisticsSchema.safeParse(state.boggleStats);
 
   return {
-    stats: state.stats ?? { ...DEFAULT_STATISTICS },
-    boggleStats: state.boggleStats ?? { ...DEFAULT_BOGGLE_STATISTICS },
+    stats: stats.success ? stats.data : { ...DEFAULT_STATISTICS },
+    boggleStats: boggleStats.success
+      ? boggleStats.data
+      : { ...DEFAULT_BOGGLE_STATISTICS },
   };
 };
 
@@ -100,6 +134,10 @@ export const useStatsStore = create<StatsState>()(
       name: STATS_STORAGE_KEY,
       version: 1,
       migrate: migrateStatsState,
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...migrateStatsState(persistedState),
+      }),
       // Only persist statistics, not actions.
       partialize: (state) => ({
         stats: state.stats,

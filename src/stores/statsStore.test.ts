@@ -62,6 +62,35 @@ describe('statsStore', () => {
     });
   });
 
+  it('replaces malformed persisted values without discarding valid game stats', () => {
+    const validBoggleStats = {
+      ...DEFAULT_BOGGLE_STATISTICS,
+      gamesPlayed: 2,
+      totalScore: 50,
+      averageScore: 25,
+    };
+
+    expect(
+      migrateStatsState({
+        stats: { ...DEFAULT_STATISTICS, gamesPlayed: -4 },
+        boggleStats: validBoggleStats,
+      })
+    ).toEqual({
+      stats: DEFAULT_STATISTICS,
+      boggleStats: validBoggleStats,
+    });
+  });
+
+  it.each([null, 'invalid', [], { stats: { gamesPlayed: Infinity } }])(
+    'safely defaults invalid persisted state %#',
+    (persistedState) => {
+      expect(migrateStatsState(persistedState)).toEqual({
+        stats: DEFAULT_STATISTICS,
+        boggleStats: DEFAULT_BOGGLE_STATISTICS,
+      });
+    }
+  );
+
   describe('recordGame', () => {
     it('should record a won solo game', () => {
       const { recordGame } = useStatsStore.getState();
