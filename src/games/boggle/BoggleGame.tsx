@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBoggleStore } from './store';
 import { useTimerStore } from '../../stores/timerStore';
-import { BoggleBoard, Timer, WordList, AllWordsList } from './components';
+import { BoggleBoard, Timer, WordList, AllWordsList, BoggleLoadingState } from './components';
 import { GameLayout } from '../../components/GameLayout/GameLayout';
 import Lobby from '../../components/Lobby';
 import ErrorBoundary from '../../components/ErrorBoundary';
@@ -427,7 +427,11 @@ export default function BoggleGame() {
     return (
       <GameLayout gameId="boggle" gameName="Boggle" onBack={handleBackToLobby}>
         <div className="boggle-game">
-          <div className="loading">Loading dictionary...</div>
+          <BoggleLoadingState
+            isMultiplayerViewer={localGameMode === 'multiplayer' && isViewer}
+            connectionStatus={connectionStatus}
+            errorMessage={errorMessage}
+          />
         </div>
       </GameLayout>
     );
