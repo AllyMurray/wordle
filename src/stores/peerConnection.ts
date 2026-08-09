@@ -80,6 +80,8 @@ export interface PendingMessage {
  * - Callbacks and timeouts are implementation details
  */
 export interface InternalConnectionState {
+  /** Invalidates asynchronous work started by an older connection lifecycle. */
+  connectionGeneration: number;
   peer: InstanceType<typeof import('peerjs').default> | null;
   connection: DataConnection | null;
   pendingMessages: Map<string, PendingMessage>;
@@ -100,6 +102,7 @@ export interface InternalConnectionState {
 }
 
 export const createInternalState = (): InternalConnectionState => ({
+  connectionGeneration: 0,
   peer: null,
   connection: null,
   pendingMessages: new Map(),
@@ -144,6 +147,9 @@ export const clearReconnectTimeout = (internal: InternalConnectionState): void =
 };
 
 export const cleanup = (internal: InternalConnectionState): void => {
+  // Invalidate pending dynamic imports, PeerJS callbacks, and delayed retries
+  // before closing the current transport.
+  internal.connectionGeneration++;
   clearPendingMessages(internal);
   stopHeartbeat(internal);
   clearReconnectTimeout(internal);

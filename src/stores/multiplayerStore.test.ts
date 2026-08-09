@@ -132,6 +132,7 @@ import {
   registerGameStateCallback,
   registerSuggestionResponseCallback,
 } from './multiplayerStore';
+import { loadPeerJS } from './peerConnection';
 
 // Helper to wait for async PeerJS loading to complete
 // Uses vi.runAllTimersAsync() to handle both timers and microtasks
@@ -617,6 +618,48 @@ describe('multiplayerStore', () => {
       expect(state.errorMessage).toBe('');
       expect(state.partnerConnected).toBe(false);
       expect(state.pendingSuggestion).toBe(null);
+    });
+
+    it('should ignore PeerJS loading that completes after leaving', async () => {
+      let resolvePeerLoad: ((Peer: typeof import('peerjs').default) => void) | undefined;
+      vi.mocked(loadPeerJS).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolvePeerLoad = resolve;
+          })
+      );
+
+      act(() => {
+        useMultiplayerStore.getState().hostGame('wordle');
+        useMultiplayerStore.getState().leaveSession();
+      });
+
+      resolvePeerLoad?.(MockPeerClass as unknown as typeof import('peerjs').default);
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockPeerInstance).toBeNull();
+      expect(useMultiplayerStore.getState().role).toBeNull();
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('disconnected');
+    });
+
+    it('should cancel a delayed host retry when leaving', async () => {
+      act(() => {
+        useMultiplayerStore.getState().hostGame('wordle');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      act(() => {
+        mockPeerInstance?._triggerError({ type: 'unavailable-id' });
+        useMultiplayerStore.getState().leaveSession();
+        vi.advanceTimersByTime(1000);
+      });
+
+      expect(useMultiplayerStore.getState().role).toBeNull();
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('disconnected');
     });
   });
 

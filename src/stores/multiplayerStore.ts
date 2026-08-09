@@ -140,6 +140,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
     // Host a new game session
     const hostGame = (gameId: string, pin?: string): void => {
       cleanup(internal);
+      const connectionGeneration = internal.connectionGeneration;
       // Reset rate limiting state for fresh session
       resetRateLimitState(rateLimitState);
       const sanitizedPin = pin ? sanitizeSessionPin(pin) : '';
@@ -162,6 +163,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       // Load PeerJS dynamically
       loadPeerJS()
         .then((Peer) => {
+          if (internal.connectionGeneration !== connectionGeneration) return;
+
           let peer: InstanceType<typeof Peer>;
           try {
             peer = new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
@@ -175,10 +178,16 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           }
 
           peer.on('open', () => {
+            if (internal.connectionGeneration !== connectionGeneration) return;
             set({ sessionCode: code, connectionStatus: 'connected' });
           });
 
           peer.on('connection', (conn: DataConnection) => {
+            if (internal.connectionGeneration !== connectionGeneration) {
+              conn.close();
+              return;
+            }
+
             let connectionAuthenticated = false;
 
             if (internal.connection) {
@@ -188,6 +197,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             set({ pendingSuggestion: null });
 
             conn.on('open', () => {
+              if (internal.connectionGeneration !== connectionGeneration) return;
               if (internal.sessionPinInternal === '') {
                 connectionAuthenticated = true;
                 set({ partnerConnected: true });
@@ -195,6 +205,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             });
 
             conn.on('data', (data) => {
+              if (internal.connectionGeneration !== connectionGeneration) return;
               const dataWithId = data as { _messageId?: string };
               const messageId = dataWithId._messageId;
 
@@ -299,10 +310,15 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           });
 
           peer.on('error', (err) => {
+            if (internal.connectionGeneration !== connectionGeneration) return;
             console.error('Peer error:', err);
             if (err.type === 'unavailable-id') {
               set({ connectionStatus: 'disconnected' });
-              setTimeout(() => hostGame(internal.currentGameId, internal.sessionPinInternal), GAME_CONFIG.HOST_RETRY_DELAY_MS);
+              internal.reconnectTimeout = setTimeout(() => {
+                if (internal.connectionGeneration === connectionGeneration && get().role === 'host') {
+                  hostGame(internal.currentGameId, internal.sessionPinInternal);
+                }
+              }, GAME_CONFIG.HOST_RETRY_DELAY_MS);
             } else {
               set({
                 connectionStatus: 'error',
@@ -314,6 +330,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           internal.peer = peer;
         })
         .catch((err) => {
+          if (internal.connectionGeneration !== connectionGeneration) return;
           console.error('Failed to load PeerJS:', err);
           set({
             connectionStatus: 'error',
@@ -325,6 +342,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
     // Attempt connection (used for initial join and reconnection)
     // eslint-disable-next-line prefer-const
     attemptConnection = (gameId: string, code: string, isReconnect: boolean = false, pin: string = ''): void => {
+      const connectionGeneration = ++internal.connectionGeneration;
+
       try {
         if (internal.connection) {
           internal.connection.close();
@@ -370,6 +389,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       // Load PeerJS dynamically
       loadPeerJS()
         .then((Peer) => {
+          if (internal.connectionGeneration !== connectionGeneration) return;
+
           let peer: InstanceType<typeof Peer>;
           try {
             peer = new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
@@ -408,6 +429,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           };
 
           peer.on('open', () => {
+            if (internal.connectionGeneration !== connectionGeneration) return;
+
             let conn: DataConnection;
             try {
               conn = peer.connect(hostPeerId, { reliable: true });
@@ -421,6 +444,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             }
 
             conn.on('open', () => {
+              if (internal.connectionGeneration !== connectionGeneration) return;
               internal.connection = conn;
               set({ errorMessage: '' });
               internal.isReconnecting = false;
@@ -438,6 +462,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             });
 
             conn.on('data', (data) => {
+              if (internal.connectionGeneration !== connectionGeneration) return;
               const dataWithId = data as { _messageId?: string };
               const messageId = dataWithId._messageId;
 
@@ -519,6 +544,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             });
 
             conn.on('close', () => {
+              if (internal.connectionGeneration !== connectionGeneration) return;
               stopHeartbeat(internal);
               if (!internal.isReconnecting) {
                 onHeartbeatTimeout();
@@ -526,6 +552,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             });
 
             conn.on('error', () => {
+              if (internal.connectionGeneration !== connectionGeneration) return;
               stopHeartbeat(internal);
               if (!internal.isReconnecting) {
                 onHeartbeatTimeout();
@@ -534,6 +561,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           });
 
           peer.on('error', (err) => {
+            if (internal.connectionGeneration !== connectionGeneration) return;
             console.error('Peer error:', err);
             if (err.type === 'peer-unavailable') {
               if (isReconnect && internal.reconnectAttempts < NETWORK_CONFIG.MAX_RECONNECT_ATTEMPTS) {
@@ -574,6 +602,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           internal.peer = peer;
         })
         .catch((err) => {
+          if (internal.connectionGeneration !== connectionGeneration) return;
           console.error('Failed to load PeerJS:', err);
           set({
             connectionStatus: 'error',
@@ -753,6 +782,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           console.warn('restoreHostConnection: gameId not found in state, falling back to "wordle"');
         }
         const peerId = `${gameId}-${sessionCode}`;
+        const connectionGeneration = ++internal.connectionGeneration;
 
         // Clean up the old peer if it exists
         try {
@@ -769,6 +799,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
         loadPeerJS()
           .then((Peer) => {
+            if (internal.connectionGeneration !== connectionGeneration) return;
+
             let peer: InstanceType<typeof Peer>;
             try {
               peer = new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
@@ -782,10 +814,16 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             }
 
             peer.on('open', () => {
+              if (internal.connectionGeneration !== connectionGeneration) return;
               set({ connectionStatus: 'connected' });
             });
 
             peer.on('connection', (conn: DataConnection) => {
+              if (internal.connectionGeneration !== connectionGeneration) {
+                conn.close();
+                return;
+              }
+
               let connectionAuthenticated = false;
 
               if (internal.connection) {
@@ -795,6 +833,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               set({ pendingSuggestion: null });
 
               conn.on('open', () => {
+                if (internal.connectionGeneration !== connectionGeneration) return;
                 if (internal.sessionPinInternal === '') {
                   connectionAuthenticated = true;
                   set({ partnerConnected: true });
@@ -802,6 +841,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               });
 
               conn.on('data', (data) => {
+                if (internal.connectionGeneration !== connectionGeneration) return;
                 const dataWithId = data as { _messageId?: string };
                 const messageId = dataWithId._messageId;
 
@@ -903,11 +943,16 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             });
 
             peer.on('error', (err) => {
+              if (internal.connectionGeneration !== connectionGeneration) return;
               console.error('Peer error during restore:', err);
               if (err.type === 'unavailable-id') {
                 // Session code is already in use (somehow), retry after delay
                 set({ connectionStatus: 'disconnected' });
-                setTimeout(() => get().restoreHostConnection(), GAME_CONFIG.HOST_RETRY_DELAY_MS);
+                internal.reconnectTimeout = setTimeout(() => {
+                  if (internal.connectionGeneration === connectionGeneration && get().role === 'host') {
+                    get().restoreHostConnection();
+                  }
+                }, GAME_CONFIG.HOST_RETRY_DELAY_MS);
               } else {
                 set({
                   connectionStatus: 'error',
@@ -919,6 +964,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             internal.peer = peer;
           })
           .catch((err) => {
+            if (internal.connectionGeneration !== connectionGeneration) return;
             console.error('Failed to load PeerJS during restore:', err);
             set({
               connectionStatus: 'error',
