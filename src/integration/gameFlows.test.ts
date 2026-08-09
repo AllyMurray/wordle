@@ -14,14 +14,18 @@ import * as wordsModule from '../data/words';
  */
 
 // Mock the words module with a known word list
-vi.mock('../data/words', () => ({
-  getRandomWord: vi.fn(() => 'CRANE'),
-  WORDS: [
+vi.mock('../data/words', () => {
+  const words = [
     'crane', 'apple', 'grape', 'lemon', 'melon', 'pearl', 'slate',
     'trace', 'arise', 'stare', 'hello', 'world', 'plane', 'train',
     'brain', 'drain', 'grain', 'plain', 'spain', 'chain',
-  ],
-}));
+  ];
+  return {
+    getRandomWord: vi.fn(() => 'CRANE'),
+    WORDS: words,
+    isValidGuess: (word: string) => words.includes(word.toLowerCase()),
+  };
+});
 
 // Type for the result object from renderHook
 type GameSessionResult = { current: ReturnType<typeof useGameSession> };

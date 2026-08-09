@@ -1,5 +1,5 @@
 import type { LetterStatus } from './types';
-import { WORDS } from './words';
+import { isValidGuess } from './words';
 
 const WORD_LENGTH = 5;
 
@@ -7,7 +7,7 @@ const WORD_LENGTH = 5;
  * Check if a word is in the word list.
  */
 export function isValidWord(word: string): boolean {
-  return WORDS.includes(word.toLowerCase());
+  return isValidGuess(word);
 }
 
 /**

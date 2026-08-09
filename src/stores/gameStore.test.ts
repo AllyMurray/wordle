@@ -4,10 +4,14 @@ import { useGameStore } from './gameStore';
 import * as wordsModule from '../data/words';
 
 // Mock the words module
-vi.mock('../data/words', () => ({
-  getRandomWord: vi.fn(() => 'CRANE'),
-  WORDS: ['crane', 'apple', 'grape', 'lemon', 'melon', 'pearl', 'slate', 'trace', 'arise', 'stare'],
-}));
+vi.mock('../data/words', () => {
+  const words = ['crane', 'apple', 'grape', 'lemon', 'melon', 'pearl', 'slate', 'trace', 'arise', 'stare'];
+  return {
+    getRandomWord: vi.fn(() => 'CRANE'),
+    WORDS: words,
+    isValidGuess: (word: string) => words.includes(word.toLowerCase()),
+  };
+});
 
 describe('gameStore', () => {
   beforeEach(() => {
