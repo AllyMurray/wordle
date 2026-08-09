@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { GAME_CONFIG, type GameStatistics } from '../types';
 import './Stats.css';
 
@@ -19,6 +19,18 @@ const Stats = memo(function Stats({
   onClose,
   lastGuessCount,
 }: StatsProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+
+    return () => previouslyFocused?.focus();
+  }, [isOpen]);
+
   if (!isOpen) {
     return null;
   }
@@ -31,7 +43,26 @@ const Stats = memo(function Stats({
 
   const handleKeyDown = (e: React.KeyboardEvent): void => {
     if (e.key === 'Escape') {
+      e.preventDefault();
       onClose();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+      );
+      if (!focusableElements?.length) return;
+
+      const first = focusableElements[0]!;
+      const last = focusableElements[focusableElements.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
   };
 
@@ -44,8 +75,9 @@ const Stats = memo(function Stats({
       aria-modal="true"
       aria-labelledby="stats-title"
     >
-      <div className="stats-modal">
+      <div className="stats-modal" ref={modalRef}>
         <button
+          ref={closeButtonRef}
           className="stats-close"
           onClick={onClose}
           aria-label="Close statistics"
