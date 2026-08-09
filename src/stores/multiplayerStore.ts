@@ -122,6 +122,7 @@ const internal: InternalConnectionState = createInternalState();
  * Prevents brute-force attacks on sessions and PINs.
  */
 const rateLimitState: RateLimitState = createRateLimitState();
+const HOST_SESSION_AUTH_KEY = 'host-session';
 
 /**
  * Zustand store for multiplayer state and P2P connection handling.
@@ -190,17 +191,25 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
             let connectionAuthenticated = false;
 
-            if (internal.connection) {
-              internal.connection.close();
-            }
-            internal.connection = conn;
-            set({ pendingSuggestion: null });
+            const activateConnection = (): void => {
+              if (internal.connectionGeneration !== connectionGeneration) {
+                conn.close();
+                return;
+              }
+
+              const previousConnection = internal.connection;
+              internal.connection = conn;
+              if (previousConnection && previousConnection !== conn) {
+                previousConnection.close();
+              }
+              set({ partnerConnected: true, pendingSuggestion: null });
+            };
 
             conn.on('open', () => {
               if (internal.connectionGeneration !== connectionGeneration) return;
               if (internal.sessionPinInternal === '') {
                 connectionAuthenticated = true;
-                set({ partnerConnected: true });
+                activateConnection();
               }
             });
 
@@ -222,10 +231,9 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               }
 
               if (message.type === 'auth-request') {
-                const peerId = conn.peer;
-
-                // Check if this peer is rate-limited due to too many failed auth attempts
-                const authRateCheck = checkAuthRateLimit(rateLimitState, peerId);
+                // Viewer peer IDs change on every connection, so authentication
+                // failures must be limited across the whole host session.
+                const authRateCheck = checkAuthRateLimit(rateLimitState, HOST_SESSION_AUTH_KEY);
                 if (!authRateCheck.allowed) {
                   const retrySeconds = Math.ceil(authRateCheck.retryAfterMs / 1000);
                   try {
@@ -242,17 +250,17 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
                 if (internal.sessionPinInternal === '' || message.pin === internal.sessionPinInternal) {
                   // Clear any previous failed attempts on successful auth
-                  clearAuthRateLimit(rateLimitState, peerId);
+                  clearAuthRateLimit(rateLimitState, HOST_SESSION_AUTH_KEY);
                   try {
                     conn.send({ type: 'auth-success' } as PeerMessage);
                     connectionAuthenticated = true;
-                    set({ partnerConnected: true });
+                    activateConnection();
                   } catch (err) {
                     console.warn('Error sending auth success:', err);
                   }
                 } else {
                   // Record failed auth attempt
-                  const isBlocked = recordFailedAuthAttempt(rateLimitState, peerId);
+                  const isBlocked = recordFailedAuthAttempt(rateLimitState, HOST_SESSION_AUTH_KEY);
                   const reason = isBlocked
                     ? 'Too many failed attempts. Please try again later.'
                     : 'Incorrect PIN';
@@ -831,17 +839,25 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
               let connectionAuthenticated = false;
 
-              if (internal.connection) {
-                internal.connection.close();
-              }
-              internal.connection = conn;
-              set({ pendingSuggestion: null });
+              const activateConnection = (): void => {
+                if (internal.connectionGeneration !== connectionGeneration) {
+                  conn.close();
+                  return;
+                }
+
+                const previousConnection = internal.connection;
+                internal.connection = conn;
+                if (previousConnection && previousConnection !== conn) {
+                  previousConnection.close();
+                }
+                set({ partnerConnected: true, pendingSuggestion: null });
+              };
 
               conn.on('open', () => {
                 if (internal.connectionGeneration !== connectionGeneration) return;
                 if (internal.sessionPinInternal === '') {
                   connectionAuthenticated = true;
-                  set({ partnerConnected: true });
+                  activateConnection();
                 }
               });
 
@@ -863,9 +879,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 }
 
                 if (message.type === 'auth-request') {
-                  const peerId = conn.peer;
-
-                  const authRateCheck = checkAuthRateLimit(rateLimitState, peerId);
+                  const authRateCheck = checkAuthRateLimit(rateLimitState, HOST_SESSION_AUTH_KEY);
                   if (!authRateCheck.allowed) {
                     const retrySeconds = Math.ceil(authRateCheck.retryAfterMs / 1000);
                     try {
@@ -881,16 +895,16 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                   }
 
                   if (internal.sessionPinInternal === '' || message.pin === internal.sessionPinInternal) {
-                    clearAuthRateLimit(rateLimitState, peerId);
+                    clearAuthRateLimit(rateLimitState, HOST_SESSION_AUTH_KEY);
                     try {
                       conn.send({ type: 'auth-success' } as PeerMessage);
                       connectionAuthenticated = true;
-                      set({ partnerConnected: true });
+                      activateConnection();
                     } catch (err) {
                       console.warn('Error sending auth success:', err);
                     }
                   } else {
-                    const isBlocked = recordFailedAuthAttempt(rateLimitState, peerId);
+                    const isBlocked = recordFailedAuthAttempt(rateLimitState, HOST_SESSION_AUTH_KEY);
                     const reason = isBlocked
                       ? 'Too many failed attempts. Please try again later.'
                       : 'Incorrect PIN';

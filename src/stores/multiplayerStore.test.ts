@@ -407,6 +407,64 @@ describe('multiplayerStore', () => {
       expect(useMultiplayerStore.getState().partnerConnected).toBe(false);
     });
 
+    it('should keep the active viewer until a replacement authenticates', async () => {
+      act(() => {
+        useMultiplayerStore.getState().hostGame('wordle', '1234');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      const activeViewer = createMockConnection(true);
+      const candidateViewer = createMockConnection(true);
+
+      act(() => {
+        mockPeerInstance?._triggerConnection(activeViewer as unknown as DataConnection);
+        activeViewer._triggerData({ type: 'auth-request', pin: '1234' });
+        useMultiplayerStore.setState({ pendingSuggestion: { word: 'HELLO' } });
+        mockPeerInstance?._triggerConnection(candidateViewer as unknown as DataConnection);
+        candidateViewer._triggerData({ type: 'auth-request', pin: '0000' });
+      });
+
+      expect(activeViewer.close).not.toHaveBeenCalled();
+      expect(useMultiplayerStore.getState().partnerConnected).toBe(true);
+      expect(useMultiplayerStore.getState().pendingSuggestion).toEqual({ word: 'HELLO' });
+
+      act(() => {
+        candidateViewer._triggerData({ type: 'auth-request', pin: '1234' });
+      });
+
+      expect(activeViewer.close).toHaveBeenCalledTimes(1);
+      expect(useMultiplayerStore.getState().pendingSuggestion).toBeNull();
+    });
+
+    it('should rate-limit failed PINs across changing viewer peer IDs', async () => {
+      act(() => {
+        useMultiplayerStore.getState().hostGame('wordle', '1234');
+      });
+      await act(async () => {
+        await flushAsyncOperations();
+      });
+
+      const candidates = Array.from({ length: 3 }, (_, index) => {
+        const candidate = createMockConnection(true);
+        (candidate as unknown as { peer: string }).peer = `viewer-${index}`;
+        return candidate;
+      });
+
+      for (const candidate of candidates) {
+        act(() => {
+          mockPeerInstance?._triggerConnection(candidate as unknown as DataConnection);
+          candidate._triggerData({ type: 'auth-request', pin: '0000' });
+        });
+      }
+
+      expect(candidates[2]?.send).toHaveBeenCalledWith({
+        type: 'auth-failure',
+        reason: 'Too many failed attempts. Please try again later.',
+      });
+    });
+
     it('should handle peer error with unavailable-id by retrying', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
