@@ -1,5 +1,6 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo } from 'react';
 import { GAME_CONFIG, type GameStatistics } from '../types';
+import { ModalDialog } from './ModalDialog';
 import './Stats.css';
 
 interface StatsProps {
@@ -19,76 +20,8 @@ const Stats = memo(function Stats({
   onClose,
   lastGuessCount,
 }: StatsProps) {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    closeButtonRef.current?.focus();
-
-    return () => previouslyFocused?.focus();
-  }, [isOpen]);
-
-  if (!isOpen) {
-    return null;
-  }
-
-  const handleOverlayClick = (e: React.MouseEvent): void => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      onClose();
-      return;
-    }
-
-    if (e.key === 'Tab') {
-      const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>(
-        'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
-      );
-      if (!focusableElements?.length) return;
-
-      const first = focusableElements[0]!;
-      const last = focusableElements[focusableElements.length - 1]!;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
-  };
-
   return (
-    <div
-      className="stats-overlay"
-      onClick={handleOverlayClick}
-      onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="stats-title"
-    >
-      <div className="stats-modal" ref={modalRef}>
-        <button
-          ref={closeButtonRef}
-          className="stats-close"
-          onClick={onClose}
-          aria-label="Close statistics"
-        >
-          &times;
-        </button>
-
-        <h2 id="stats-title" className="stats-title">
-          Statistics
-        </h2>
-
+    <ModalDialog isOpen={isOpen} title="Statistics" titleId="stats-title" onClose={onClose}>
         <div className="stats-summary">
           <div className="stat-item">
             <div className="stat-value">{stats.gamesPlayed}</div>
@@ -142,8 +75,7 @@ const Stats = memo(function Stats({
             </p>
           </div>
         )}
-      </div>
-    </div>
+    </ModalDialog>
   );
 });
 
