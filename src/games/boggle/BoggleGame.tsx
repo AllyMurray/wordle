@@ -614,6 +614,7 @@ export default function BoggleGame() {
             currentWord={currentWord}
             onTileSelect={selectTile}
             onSubmit={handleSubmit}
+            onClear={clearSelection}
             disabled={gamePhase === 'gameOver'}
             rotationAnimation={rotationAnimation}
             onRotationAnimationEnd={handleRotationAnimationEnd}
