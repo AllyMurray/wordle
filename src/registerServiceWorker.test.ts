@@ -25,4 +25,11 @@ describe('offline asset bootstrap', () => {
     expect(activateHandler).not.toContain('clients.claim');
     expect(serviceWorker).toContain("if (event.data === 'skipWaiting')");
   });
+
+  it('does not depend on third-party font requests for offline rendering', () => {
+    const globalStyles = readFileSync('src/index.css', 'utf8');
+
+    expect(globalStyles).not.toContain('fonts.googleapis.com');
+    expect(globalStyles).not.toMatch(/@import\s+url\(['"]?https?:/);
+  });
 });
