@@ -544,6 +544,33 @@ describe('multiplayerStore', () => {
       }
     });
 
+    it.each(['suggestion-accepted', 'suggestion-rejected'] as const)(
+      'should acknowledge %s messages',
+      async (messageType) => {
+        act(() => {
+          useMultiplayerStore.getState().joinGame('wordle', 'ABCDEF-abc123');
+        });
+        await act(async () => {
+          await flushAsyncOperations();
+        });
+
+        act(() => {
+          mockPeerInstance?._triggerOpen();
+          lastCreatedConnection?._triggerOpen();
+          lastCreatedConnection?._triggerData({ type: 'auth-success' });
+          lastCreatedConnection?._triggerData({
+            type: messageType,
+            _messageId: `response-${messageType}`,
+          });
+        });
+
+        expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+          type: 'ack',
+          messageId: `response-${messageType}`,
+        });
+      }
+    );
+
     it('should set error status on auth failure', () => {
       const { joinGame } = useMultiplayerStore.getState();
 

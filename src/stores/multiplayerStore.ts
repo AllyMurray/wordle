@@ -529,7 +529,12 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 return;
               }
 
-              if (messageId && message.type === 'game-state') {
+              if (
+                messageId &&
+                (message.type === 'game-state' ||
+                  message.type === 'suggestion-accepted' ||
+                  message.type === 'suggestion-rejected')
+              ) {
                 sendAck(conn, messageId);
               }
 

@@ -221,6 +221,9 @@ export const sendWithAck = (
               internal.pendingMessages.delete(messageId);
               onAckTimeout?.();
             }
+          } else {
+            internal.pendingMessages.delete(messageId);
+            onAckTimeout?.();
           }
         } else {
           internal.pendingMessages.delete(messageId);

@@ -4,6 +4,7 @@ import { NETWORK_CONFIG } from '../types';
 import {
   createInternalState,
   handleHeartbeat,
+  sendWithAck,
   startHeartbeat,
   stopHeartbeat,
 } from './peerConnection';
@@ -55,5 +56,37 @@ describe('peer connection heartbeat', () => {
 
     expect(onTimeout).not.toHaveBeenCalled();
     stopHeartbeat(internal);
+  });
+});
+
+describe('acknowledged messages', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('removes a pending message when the connection closes before retry', () => {
+    const internal = createInternalState();
+    const onAckTimeout = vi.fn();
+    const connection = {
+      open: true,
+      send: vi.fn(),
+    } as unknown as DataConnection;
+
+    sendWithAck(
+      internal,
+      connection,
+      { type: 'suggestion-accepted' },
+      true,
+      onAckTimeout
+    );
+    (connection as unknown as { open: boolean }).open = false;
+    vi.runAllTimers();
+
+    expect(internal.pendingMessages.size).toBe(0);
+    expect(onAckTimeout).toHaveBeenCalledTimes(1);
   });
 });
