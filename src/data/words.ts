@@ -88,10 +88,13 @@ export const WORDS: readonly string[] = [
   'zebra', 'zones'
 ];
 
-const VALID_GUESSES = new Set([...ALLOWED_GUESSES, ...WORDS]);
+const SOLUTION_WORDS = new Set(WORDS);
 
 /** Check whether a guess is in the comprehensive five-letter guess dictionary. */
-export const isValidGuess = (word: string): boolean => VALID_GUESSES.has(word.toLowerCase());
+export const isValidGuess = (word: string): boolean => {
+  const normalized = word.toLowerCase();
+  return ALLOWED_GUESSES.has(normalized) || SOLUTION_WORDS.has(normalized);
+};
 
 // Get a random word from the curated solution list.
 export const getRandomWord = (): string => {
