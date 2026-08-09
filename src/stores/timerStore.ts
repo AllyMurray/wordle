@@ -5,6 +5,7 @@ interface TimerState {
   timeRemaining: number;
   isRunning: boolean;
   intervalId: ReturnType<typeof setInterval> | null;
+  deadline: number | null;
 
   // Actions
   start: (durationSeconds: number) => void;
@@ -15,33 +16,31 @@ interface TimerState {
 }
 
 export const useTimerStore = create<TimerState>()(
-  subscribeWithSelector((set, get) => ({
-    timeRemaining: 0,
-    isRunning: false,
-    intervalId: null,
-
-    start: (durationSeconds: number) => {
+  subscribeWithSelector((set, get) => {
+    const beginCountdown = (durationSeconds: number): void => {
       const { intervalId } = get();
+      if (intervalId) clearInterval(intervalId);
 
-      // Clear any existing interval
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-
-      // Set initial time and start interval
+      const deadline = Date.now() + durationSeconds * 1000;
       const newIntervalId = setInterval(() => {
-        const { timeRemaining, isRunning } = get();
+        const state = get();
+        if (!state.isRunning || state.deadline === null) return;
 
-        if (!isRunning) return;
+        const timeRemaining = Math.max(
+          0,
+          Math.ceil((state.deadline - Date.now()) / 1000)
+        );
 
-        if (timeRemaining <= 1) {
-          const { intervalId: currentId } = get();
-          if (currentId) {
-            clearInterval(currentId);
-          }
-          set({ timeRemaining: 0, isRunning: false, intervalId: null });
-        } else {
-          set({ timeRemaining: timeRemaining - 1 });
+        if (timeRemaining === 0) {
+          if (state.intervalId) clearInterval(state.intervalId);
+          set({
+            timeRemaining: 0,
+            isRunning: false,
+            intervalId: null,
+            deadline: null,
+          });
+        } else if (timeRemaining !== state.timeRemaining) {
+          set({ timeRemaining });
         }
       }, 1000);
 
@@ -49,42 +48,58 @@ export const useTimerStore = create<TimerState>()(
         timeRemaining: durationSeconds,
         isRunning: true,
         intervalId: newIntervalId,
+        deadline,
       });
-    },
+    };
 
-    pause: () => {
-      set({ isRunning: false });
-    },
+    return {
+      timeRemaining: 0,
+      isRunning: false,
+      intervalId: null,
+      deadline: null,
 
-    resume: () => {
-      const { timeRemaining } = get();
-      if (timeRemaining > 0) {
-        set({ isRunning: true });
-      }
-    },
+      start: beginCountdown,
 
-    reset: (durationSeconds: number) => {
-      const { intervalId } = get();
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      set({
-        timeRemaining: durationSeconds,
-        isRunning: false,
-        intervalId: null,
-      });
-    },
+      pause: () => {
+        const { deadline, intervalId, timeRemaining } = get();
+        if (intervalId) clearInterval(intervalId);
+        const pausedTime = deadline === null
+          ? timeRemaining
+          : Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+        set({
+          timeRemaining: pausedTime,
+          isRunning: false,
+          intervalId: null,
+          deadline: null,
+        });
+      },
 
-    stop: () => {
-      const { intervalId } = get();
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      set({
-        timeRemaining: 0,
-        isRunning: false,
-        intervalId: null,
-      });
-    },
-  }))
+      resume: () => {
+        const { timeRemaining } = get();
+        if (timeRemaining > 0) beginCountdown(timeRemaining);
+      },
+
+      reset: (durationSeconds: number) => {
+        const { intervalId } = get();
+        if (intervalId) clearInterval(intervalId);
+        set({
+          timeRemaining: durationSeconds,
+          isRunning: false,
+          intervalId: null,
+          deadline: null,
+        });
+      },
+
+      stop: () => {
+        const { intervalId } = get();
+        if (intervalId) clearInterval(intervalId);
+        set({
+          timeRemaining: 0,
+          isRunning: false,
+          intervalId: null,
+          deadline: null,
+        });
+      },
+    };
+  })
 );

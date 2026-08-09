@@ -40,6 +40,16 @@ describe('useTimerStore', () => {
     expect(useTimerStore.getState().isRunning).toBe(false);
   });
 
+  it('should catch up from elapsed wall-clock time after suspension', () => {
+    const { start } = useTimerStore.getState();
+    start(180);
+
+    vi.setSystemTime(Date.now() + 30000);
+    vi.advanceTimersByTime(1000);
+
+    expect(useTimerStore.getState().timeRemaining).toBe(149);
+  });
+
   it('should pause correctly', () => {
     const { start, pause } = useTimerStore.getState();
 
