@@ -46,8 +46,6 @@ self.addEventListener('install', (event) => {
       await cacheBuildAssets(cache);
     })
   );
-  // Take control immediately
-  self.skipWaiting();
 });
 
 // Activate event - clean up old caches
@@ -61,8 +59,6 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  // Take control of all clients immediately
-  self.clients.claim();
 });
 
 // Fetch event - serve from cache with network fallback

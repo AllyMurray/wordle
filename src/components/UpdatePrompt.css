@@ -1,0 +1,41 @@
+.update-prompt {
+  position: fixed;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.update-prompt button {
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-correct);
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.update-prompt .update-prompt__dismiss {
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xl);
+}
+
+@media (max-width: 500px) {
+  .update-prompt {
+    right: var(--space-3);
+    bottom: var(--space-3);
+    left: var(--space-3);
+  }
+}
