@@ -218,6 +218,7 @@ export const NETWORK_CONFIG = {
   // Heartbeat settings
   HEARTBEAT_INTERVAL_MS: 5000,
   HEARTBEAT_TIMEOUT_MS: 15000,
+  CONNECTION_SETUP_TIMEOUT_MS: 15000,
 
   // Message acknowledgment settings
   ACK_TIMEOUT_MS: 5000,

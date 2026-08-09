@@ -89,6 +89,7 @@ export interface InternalConnectionState {
   receivedMessageIds: Set<string>;
   heartbeatInterval: ReturnType<typeof setInterval> | null;
   heartbeatTimeout: ReturnType<typeof setTimeout> | null;
+  connectionDeadline: ReturnType<typeof setTimeout> | null;
   reconnectTimeout: ReturnType<typeof setTimeout> | null;
   reconnectAttempts: number;
   lastSessionCode: string;
@@ -114,6 +115,7 @@ export const createInternalState = (): InternalConnectionState => ({
   receivedMessageIds: new Set(),
   heartbeatInterval: null,
   heartbeatTimeout: null,
+  connectionDeadline: null,
   reconnectTimeout: null,
   reconnectAttempts: 0,
   lastSessionCode: '',
@@ -155,6 +157,24 @@ export const clearReconnectTimeout = (internal: InternalConnectionState): void =
   internal.isReconnecting = false;
 };
 
+export const clearConnectionDeadline = (internal: InternalConnectionState): void => {
+  if (internal.connectionDeadline) {
+    clearTimeout(internal.connectionDeadline);
+    internal.connectionDeadline = null;
+  }
+};
+
+export const startConnectionDeadline = (
+  internal: InternalConnectionState,
+  onTimeout: () => void
+): void => {
+  clearConnectionDeadline(internal);
+  internal.connectionDeadline = setTimeout(() => {
+    internal.connectionDeadline = null;
+    onTimeout();
+  }, NETWORK_CONFIG.CONNECTION_SETUP_TIMEOUT_MS);
+};
+
 export const cleanup = (internal: InternalConnectionState): void => {
   // Invalidate pending dynamic imports, PeerJS callbacks, and delayed retries
   // before closing the current transport.
@@ -163,6 +183,7 @@ export const cleanup = (internal: InternalConnectionState): void => {
   internal.receivedMessageIds.clear();
   stopHeartbeat(internal);
   clearReconnectTimeout(internal);
+  clearConnectionDeadline(internal);
 
   try {
     if (internal.connection) {

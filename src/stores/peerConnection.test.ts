@@ -3,11 +3,38 @@ import type { DataConnection } from 'peerjs';
 import { NETWORK_CONFIG } from '../types';
 import {
   createInternalState,
+  clearConnectionDeadline,
   handleHeartbeat,
   sendWithAck,
+  startConnectionDeadline,
   startHeartbeat,
   stopHeartbeat,
 } from './peerConnection';
+
+describe('connection setup deadline', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('fails stalled setup once and can be cancelled after connecting', () => {
+    const internal = createInternalState();
+    const onTimeout = vi.fn();
+
+    startConnectionDeadline(internal, onTimeout);
+    vi.advanceTimersByTime(NETWORK_CONFIG.CONNECTION_SETUP_TIMEOUT_MS);
+    vi.advanceTimersByTime(NETWORK_CONFIG.CONNECTION_SETUP_TIMEOUT_MS);
+    expect(onTimeout).toHaveBeenCalledOnce();
+
+    startConnectionDeadline(internal, onTimeout);
+    clearConnectionDeadline(internal);
+    vi.advanceTimersByTime(NETWORK_CONFIG.CONNECTION_SETUP_TIMEOUT_MS);
+    expect(onTimeout).toHaveBeenCalledOnce();
+  });
+});
 
 describe('peer connection heartbeat', () => {
   beforeEach(() => {

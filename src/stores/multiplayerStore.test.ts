@@ -138,11 +138,12 @@ import {
   registerBoggleWordCallback,
 } from './multiplayerStore';
 import { loadPeerJS } from './peerConnection';
+import { NETWORK_CONFIG } from '../types';
 
 // Helper to wait for async PeerJS loading to complete
-// Uses vi.runAllTimersAsync() to handle both timers and microtasks
 const flushAsyncOperations = async () => {
-  await vi.runAllTimersAsync();
+  await Promise.resolve();
+  await Promise.resolve();
 };
 
 describe('multiplayerStore', () => {
@@ -241,6 +242,25 @@ describe('multiplayerStore', () => {
   });
 
   describe('hostGame', () => {
+    it('clears a previous session code while creating a new host', () => {
+      act(() => {
+        useMultiplayerStore.setState({ sessionCode: 'ABCDEF-abc123' });
+        useMultiplayerStore.getState().hostGame('wordle');
+      });
+
+      expect(useMultiplayerStore.getState().sessionCode).toBe('');
+    });
+
+    it('reports an error when host setup never opens', async () => {
+      act(() => useMultiplayerStore.getState().hostGame('wordle'));
+      await act(async () => flushAsyncOperations());
+
+      act(() => vi.advanceTimersByTime(NETWORK_CONFIG.CONNECTION_SETUP_TIMEOUT_MS));
+
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('error');
+      expect(useMultiplayerStore.getState().errorMessage).toContain('timed out');
+    });
+
     it('should set role to host and status to connecting', () => {
       const { hostGame } = useMultiplayerStore.getState();
 
@@ -320,6 +340,7 @@ describe('multiplayerStore', () => {
 
       const viewer = createMockConnection(true);
       act(() => {
+        mockPeerInstance?._triggerOpen();
         mockPeerInstance?._triggerConnection(viewer as unknown as DataConnection);
         viewer._triggerOpen();
       });
@@ -550,6 +571,20 @@ describe('multiplayerStore', () => {
   });
 
   describe('joinGame', () => {
+    it('reports an error when authentication never completes', async () => {
+      act(() => useMultiplayerStore.getState().joinGame('wordle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        vi.advanceTimersByTime(NETWORK_CONFIG.CONNECTION_SETUP_TIMEOUT_MS);
+      });
+
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('error');
+      expect(useMultiplayerStore.getState().errorMessage).toContain('timed out');
+    });
+
     it('should reject invalid session code', () => {
       const { joinGame } = useMultiplayerStore.getState();
 
