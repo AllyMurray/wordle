@@ -402,6 +402,7 @@ describe('useGameSession', () => {
       });
 
       expect(sendSuggestionSpy).toHaveBeenCalledWith('APPLE');
+      expect(result.current.suggestionStatus).toBe('pending');
     });
 
     it('should set suggestion status to invalid for non-word', () => {

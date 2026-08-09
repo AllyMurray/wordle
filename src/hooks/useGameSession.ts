@@ -136,7 +136,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
     (guess: string): void => {
       if (guess.length === WORD_LENGTH_COUNT) {
         if (WORDS.includes(guess.toLowerCase())) {
-          setSuggestionStatus(null);
+          setSuggestionStatus('pending');
           sendSuggestion(guess);
         } else {
           setSuggestionStatus('invalid');
