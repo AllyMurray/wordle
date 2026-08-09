@@ -58,6 +58,7 @@ export {
   usePendingSuggestion,
   registerGameStateCallback,
   registerSuggestionResponseCallback,
+  registerStateRequestCallback,
   registerBoggleStateCallback,
   registerBoggleWordCallback,
 } from './multiplayerStore';

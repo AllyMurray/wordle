@@ -9,6 +9,7 @@ import ErrorBoundary from '../../components/ErrorBoundary';
 import {
   registerBoggleStateCallback,
   registerBoggleWordCallback,
+  registerStateRequestCallback,
   useMultiplayerStore,
   useStatsStore,
 } from '../../stores';
@@ -219,6 +220,30 @@ export default function BoggleGame() {
     timedMode,
     sendBoggleState,
   ]);
+
+  // Reconnecting viewers request a fresh snapshot even when the host's
+  // partnerConnected flag was already true for the replaced connection.
+  useEffect(() => {
+    if (!isHost) return;
+
+    registerStateRequestCallback(() => {
+      const state = useBoggleStore.getState();
+      if (!state.board || (gamePhaseRef.current !== 'playing' && gamePhaseRef.current !== 'gameOver')) {
+        return;
+      }
+
+      sendBoggleState({
+        board: state.board,
+        foundWords: state.foundWords,
+        score: state.score,
+        gameOver: gamePhaseRef.current === 'gameOver',
+        timeRemaining: useTimerStore.getState().timeRemaining,
+        timedMode,
+      });
+    });
+
+    return () => registerStateRequestCallback(null);
+  }, [isHost, sendBoggleState, timedMode]);
 
   const handleBack = useCallback(() => {
     stopTimer();

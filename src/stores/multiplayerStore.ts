@@ -307,6 +307,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
               if (message.type === 'suggest-word') {
                 set({ pendingSuggestion: { word: message.word } });
+              } else if (message.type === 'request-state') {
+                internal.onStateRequested?.();
               } else if (message.type === 'clear-suggestion') {
                 set({ pendingSuggestion: null });
               } else if (message.type === 'boggle-word' && internal.onBoggleWordReceived) {
@@ -985,6 +987,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
                 if (message.type === 'suggest-word') {
                   set({ pendingSuggestion: { word: message.word } });
+                } else if (message.type === 'request-state') {
+                  internal.onStateRequested?.();
                 } else if (message.type === 'clear-suggestion') {
                   set({ pendingSuggestion: null });
                 } else if (message.type === 'boggle-word' && internal.onBoggleWordReceived) {
@@ -1104,6 +1108,10 @@ export const registerGameStateCallback = (callback: (state: ViewerGameState) => 
 
 export const registerSuggestionResponseCallback = (callback: (accepted: boolean) => void): void => {
   internal.onSuggestionResponse = callback;
+};
+
+export const registerStateRequestCallback = (callback: (() => void) | null): void => {
+  internal.onStateRequested = callback;
 };
 
 export const registerBoggleStateCallback = (

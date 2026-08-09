@@ -133,6 +133,7 @@ import {
   useMultiplayerStore,
   registerGameStateCallback,
   registerSuggestionResponseCallback,
+  registerStateRequestCallback,
   registerBoggleStateCallback,
   registerBoggleWordCallback,
 } from './multiplayerStore';
@@ -311,6 +312,23 @@ describe('multiplayerStore', () => {
       });
 
       expect(useMultiplayerStore.getState().partnerConnected).toBe(true);
+    });
+
+    it('should service an authenticated viewer state request', async () => {
+      const onStateRequested = vi.fn();
+      registerStateRequestCallback(onStateRequested);
+      act(() => useMultiplayerStore.getState().hostGame('wordle'));
+      await act(async () => flushAsyncOperations());
+
+      const viewer = createMockConnection(true);
+      act(() => {
+        mockPeerInstance?._triggerConnection(viewer as unknown as DataConnection);
+        viewer._triggerData({ type: 'request-state', _messageId: 'request-1' });
+      });
+
+      expect(viewer.send).toHaveBeenCalledWith({ type: 'ack', messageId: 'request-1' });
+      expect(onStateRequested).toHaveBeenCalledOnce();
+      registerStateRequestCallback(null);
     });
 
     it('should clear pending suggestion when new viewer connects', () => {

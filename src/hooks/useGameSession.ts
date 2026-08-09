@@ -8,6 +8,7 @@ import {
   useUIStore,
   registerGameStateCallback,
   registerSuggestionResponseCallback,
+  registerStateRequestCallback,
   MAX_GUESSES_COUNT,
   WORD_LENGTH_COUNT,
 } from '../stores';
@@ -177,6 +178,14 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
       sendGameState(getGameState());
     }
   }, [isHost, partnerConnected, sendGameState, getGameState]);
+
+  // A reconnecting viewer explicitly asks for a fresh authoritative snapshot.
+  useEffect(() => {
+    if (!isHost) return;
+
+    registerStateRequestCallback(() => sendGameState(getGameState()));
+    return () => registerStateRequestCallback(null);
+  }, [isHost, sendGameState, getGameState]);
 
   // Ref to hold latest sync context - avoids stale closures without adding dependencies
   const syncContextRef = useLatest({
