@@ -222,6 +222,7 @@ export const NETWORK_CONFIG = {
   // Message acknowledgment settings
   ACK_TIMEOUT_MS: 5000,
   MAX_RETRY_ATTEMPTS: 3,
+  MAX_RECEIVED_MESSAGE_IDS: 500,
 
   // Rate limiting settings (prevents brute-force attacks)
   /** Maximum connection attempts allowed within the time window */

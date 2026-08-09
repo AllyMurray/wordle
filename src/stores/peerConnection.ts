@@ -86,6 +86,7 @@ export interface InternalConnectionState {
   peer: InstanceType<typeof import('peerjs').default> | null;
   connection: DataConnection | null;
   pendingMessages: Map<string, PendingMessage>;
+  receivedMessageIds: Set<string>;
   heartbeatInterval: ReturnType<typeof setInterval> | null;
   heartbeatTimeout: ReturnType<typeof setTimeout> | null;
   reconnectTimeout: ReturnType<typeof setTimeout> | null;
@@ -110,6 +111,7 @@ export const createInternalState = (): InternalConnectionState => ({
   peer: null,
   connection: null,
   pendingMessages: new Map(),
+  receivedMessageIds: new Set(),
   heartbeatInterval: null,
   heartbeatTimeout: null,
   reconnectTimeout: null,
@@ -158,6 +160,7 @@ export const cleanup = (internal: InternalConnectionState): void => {
   // before closing the current transport.
   internal.connectionGeneration++;
   clearPendingMessages(internal);
+  internal.receivedMessageIds.clear();
   stopHeartbeat(internal);
   clearReconnectTimeout(internal);
 
@@ -266,6 +269,33 @@ export const sendAck = (conn: DataConnection, messageId: string): void => {
       console.warn('Error sending acknowledgment:', err);
     }
   }
+};
+
+/**
+ * Acknowledge an incoming reliable message and return whether its side effects
+ * should run. A lost acknowledgment can cause the sender to replay the same
+ * message, so IDs are retained in a bounded set for receiver-side idempotency.
+ */
+export const acknowledgeIncomingMessage = (
+  internal: InternalConnectionState,
+  conn: DataConnection,
+  messageId: string
+): boolean => {
+  sendAck(conn, messageId);
+
+  if (internal.receivedMessageIds.has(messageId)) {
+    return false;
+  }
+
+  internal.receivedMessageIds.add(messageId);
+  if (internal.receivedMessageIds.size > NETWORK_CONFIG.MAX_RECEIVED_MESSAGE_IDS) {
+    const oldestMessageId = internal.receivedMessageIds.values().next().value;
+    if (oldestMessageId !== undefined) {
+      internal.receivedMessageIds.delete(oldestMessageId);
+    }
+  }
+
+  return true;
 };
 
 export const handleHeartbeat = (internal: InternalConnectionState): void => {

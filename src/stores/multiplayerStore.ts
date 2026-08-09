@@ -29,7 +29,7 @@ import {
   getReconnectDelay,
   sendWithAck,
   handleAck,
-  sendAck,
+  acknowledgeIncomingMessage,
   handleHeartbeat,
   startHeartbeat,
   validatePeerMessage,
@@ -302,7 +302,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                   message.type === 'request-state' ||
                   message.type === 'boggle-word')
               ) {
-                sendAck(conn, messageId);
+                if (!acknowledgeIncomingMessage(internal, conn, messageId)) return;
               }
 
               if (message.type === 'suggest-word') {
@@ -556,7 +556,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                   message.type === 'suggestion-accepted' ||
                   message.type === 'suggestion-rejected')
               ) {
-                sendAck(conn, messageId);
+                if (!acknowledgeIncomingMessage(internal, conn, messageId)) return;
               }
 
               if (message.type === 'game-state' && internal.onGameStateReceived) {
@@ -982,7 +982,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                     message.type === 'request-state' ||
                     message.type === 'boggle-word')
                 ) {
-                  sendAck(conn, messageId);
+                  if (!acknowledgeIncomingMessage(internal, conn, messageId)) return;
                 }
 
                 if (message.type === 'suggest-word') {

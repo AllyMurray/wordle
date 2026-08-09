@@ -1199,6 +1199,42 @@ describe('multiplayerStore', () => {
       registerBoggleStateCallback(null);
     });
 
+    it('should acknowledge but not reapply a retried Boggle snapshot', async () => {
+      const callback = vi.fn();
+      registerBoggleStateCallback(callback);
+      act(() => useMultiplayerStore.getState().joinGame('boggle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      const message = {
+        type: 'boggle-state',
+        state: {
+          board: { grid: [['T']], size: 1 },
+          foundWords: [],
+          score: 0,
+          gameOver: false,
+          timeRemaining: 120,
+          timedMode: true,
+        },
+        _messageId: 'retried-state-1',
+      };
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        lastCreatedConnection?._triggerData(message);
+        lastCreatedConnection?._triggerData(message);
+      });
+
+      expect(callback).toHaveBeenCalledOnce();
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'retried-state-1',
+      });
+      expect(lastCreatedConnection?.send).toHaveBeenCalledTimes(4);
+      registerBoggleStateCallback(null);
+    });
+
     it('should handle ping/pong messages', async () => {
       const { hostGame } = useMultiplayerStore.getState();
 
