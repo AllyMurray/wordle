@@ -71,10 +71,6 @@ interface MultiplayerState {
   restoreHostConnection: () => void;
   restoreViewerConnection: () => void;
 
-  // Computed
-  isHost: boolean;
-  isViewer: boolean;
-  isConnected: boolean;
 }
 
 /**
@@ -782,17 +778,6 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       partnerConnected: false,
       pendingSuggestion: null,
       currentGameId: '',
-
-      // Computed (these update based on role)
-      get isHost() {
-        return get().role === 'host';
-      },
-      get isViewer() {
-        return get().role === 'viewer';
-      },
-      get isConnected() {
-        return get().connectionStatus === 'connected';
-      },
 
       // Actions
       hostGame,
