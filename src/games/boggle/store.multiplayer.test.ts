@@ -38,4 +38,65 @@ describe('Boggle multiplayer state', () => {
     expect(applied.isLoading).toBe(false);
     expect(applied.possibleWords).toContain('TEST');
   });
+
+  it('rejects text submissions after the game is over', async () => {
+    await useBoggleStore.getState().applyMultiplayerState({
+      board: {
+        grid: [
+          ['T', 'E', 'S', 'T'],
+          ['A', 'R', 'E', 'A'],
+          ['G', 'A', 'M', 'E'],
+          ['W', 'O', 'R', 'D'],
+        ],
+        size: 4,
+      },
+      foundWords: [],
+      score: 0,
+      gameOver: true,
+      timeRemaining: 0,
+      timedMode: true,
+    });
+
+    expect(useBoggleStore.getState().submitWordByText('TEST')).toEqual({
+      success: false,
+      reason: 'Game is over',
+    });
+    expect(useBoggleStore.getState().foundWords).toEqual([]);
+    expect(useBoggleStore.getState().score).toBe(0);
+  });
+
+  it('rejects path submissions after the game is over', async () => {
+    await useBoggleStore.getState().applyMultiplayerState({
+      board: {
+        grid: [
+          ['T', 'E', 'S', 'T'],
+          ['A', 'R', 'E', 'A'],
+          ['G', 'A', 'M', 'E'],
+          ['W', 'O', 'R', 'D'],
+        ],
+        size: 4,
+      },
+      foundWords: [],
+      score: 0,
+      gameOver: true,
+      timeRemaining: 0,
+      timedMode: true,
+    });
+    useBoggleStore.setState({
+      currentPath: [
+        { row: 0, col: 0 },
+        { row: 0, col: 1 },
+        { row: 0, col: 2 },
+        { row: 0, col: 3 },
+      ],
+      currentWord: 'TEST',
+    });
+
+    expect(useBoggleStore.getState().submitWord()).toEqual({
+      success: false,
+      reason: 'Game is over',
+    });
+    expect(useBoggleStore.getState().currentPath).toEqual([]);
+    expect(useBoggleStore.getState().foundWords).toEqual([]);
+  });
 });

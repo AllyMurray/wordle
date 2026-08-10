@@ -18,7 +18,6 @@ export const Timer = memo(function Timer({
     <div
       className={`timer ${isLow ? 'timer--low' : ''}`}
       role="timer"
-      aria-live={isLow ? 'assertive' : 'polite'}
       aria-label={`${minutes} minutes ${seconds} seconds remaining`}
     >
       <span className="timer__display">

@@ -145,7 +145,12 @@ export const useBoggleStore = create<BoggleStoreState>()(
     },
 
     submitWord: () => {
-      const { board, currentPath, foundWords, score, possibleWords } = get();
+      const { board, currentPath, foundWords, score, possibleWords, gameOver } = get();
+
+      if (gameOver) {
+        set({ currentPath: [], currentWord: '' });
+        return { success: false, reason: 'Game is over' };
+      }
 
       if (!board) {
         set({ currentPath: [], currentWord: '' });
@@ -180,7 +185,11 @@ export const useBoggleStore = create<BoggleStoreState>()(
     },
 
     submitWordByText: (word: string) => {
-      const { board, foundWords, score, possibleWords } = get();
+      const { board, foundWords, score, possibleWords, gameOver } = get();
+
+      if (gameOver) {
+        return { success: false, reason: 'Game is over' };
+      }
 
       if (!board) {
         return { success: false, reason: 'Game not initialized' };

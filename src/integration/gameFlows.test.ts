@@ -558,7 +558,7 @@ describe('Integration: Multiplayer Host/Join Flow', () => {
   });
 
   it('should set up join mode correctly', () => {
-    const mockJoinGame = vi.fn();
+      const mockJoinGame = vi.fn(() => true);
     act(() => {
       useMultiplayerStore.setState({
         joinGame: mockJoinGame,
@@ -576,7 +576,7 @@ describe('Integration: Multiplayer Host/Join Flow', () => {
   });
 
   it('should set up join mode with PIN', () => {
-    const mockJoinGame = vi.fn();
+      const mockJoinGame = vi.fn(() => true);
     act(() => {
       useMultiplayerStore.setState({
         joinGame: mockJoinGame,

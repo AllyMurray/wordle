@@ -178,7 +178,7 @@ describe('useGameSession', () => {
 
   describe('handleJoin', () => {
     it('should call joinGame and set game mode to multiplayer', () => {
-      const joinGameSpy = vi.fn();
+      const joinGameSpy = vi.fn(() => true);
       act(() => {
         useMultiplayerStore.setState({ joinGame: joinGameSpy } as unknown as Parameters<typeof useMultiplayerStore.setState>[0]);
       });
@@ -194,7 +194,7 @@ describe('useGameSession', () => {
     });
 
     it('should pass code and PIN to joinGame', () => {
-      const joinGameSpy = vi.fn();
+      const joinGameSpy = vi.fn(() => true);
       act(() => {
         useMultiplayerStore.setState({ joinGame: joinGameSpy } as unknown as Parameters<typeof useMultiplayerStore.setState>[0]);
       });
@@ -206,6 +206,21 @@ describe('useGameSession', () => {
       });
 
       expect(joinGameSpy).toHaveBeenCalledWith('wordle', 'ABC123', '5678');
+    });
+
+    it('should stay in the lobby when joining is rejected', () => {
+      const joinGameSpy = vi.fn(() => false);
+      act(() => {
+        useMultiplayerStore.setState({ joinGame: joinGameSpy });
+      });
+
+      const { result } = renderHook(() => useGameSession());
+
+      act(() => {
+        result.current.handleJoin('ABCDEF-abc123', '12');
+      });
+
+      expect(result.current.gameMode).toBeNull();
     });
   });
 

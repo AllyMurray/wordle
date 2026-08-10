@@ -298,10 +298,11 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
 
   const handleJoin = useCallback(
     (code: string, pin?: string): void => {
+      if (!joinGame(gameId, code, pin)) return;
+
       closeStats();
       setSuggestionStatus(null);
       newGame();
-      joinGame(gameId, code, pin);
       setGameMode('multiplayer');
     },
     [closeStats, newGame, joinGame, setGameMode, setSuggestionStatus, gameId]

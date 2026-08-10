@@ -589,11 +589,13 @@ describe('multiplayerStore', () => {
     it('should reject invalid session code', () => {
       const { joinGame } = useMultiplayerStore.getState();
 
+      let accepted = true;
       act(() => {
-        joinGame('wordle', 'invalid');
+        accepted = joinGame('wordle', 'invalid');
       });
 
       const state = useMultiplayerStore.getState();
+      expect(accepted).toBe(false);
       expect(state.connectionStatus).toBe('error');
       expect(state.errorMessage).toBe('Invalid session code. Please check and try again.');
     });
@@ -602,11 +604,13 @@ describe('multiplayerStore', () => {
       const { joinGame } = useMultiplayerStore.getState();
 
       // Valid session code format: 6 chars + separator + 6 hex chars
+      let accepted = true;
       act(() => {
-        joinGame('wordle', 'ABCDEF-abc123', '12'); // PIN too short
+        accepted = joinGame('wordle', 'ABCDEF-abc123', '12'); // PIN too short
       });
 
       const state = useMultiplayerStore.getState();
+      expect(accepted).toBe(false);
       expect(state.connectionStatus).toBe('error');
       expect(state.errorMessage).toBe('Invalid PIN format. PIN must be 4-8 digits.');
     });
@@ -614,11 +618,13 @@ describe('multiplayerStore', () => {
     it('should set role to viewer and status to connecting with valid code', () => {
       const { joinGame } = useMultiplayerStore.getState();
 
+      let accepted = false;
       act(() => {
-        joinGame('wordle', 'ABCDEF-abc123');
+        accepted = joinGame('wordle', 'ABCDEF-abc123');
       });
 
       const state = useMultiplayerStore.getState();
+      expect(accepted).toBe(true);
       expect(state.role).toBe('viewer');
       expect(state.connectionStatus).toBe('connecting');
       expect(state.sessionCode).toBe('ABCDEF-abc123');

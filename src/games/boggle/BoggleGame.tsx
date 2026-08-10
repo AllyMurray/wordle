@@ -342,7 +342,12 @@ export default function BoggleGame() {
       return;
     }
 
-    submitWord();
+    const result = submitWord();
+    setWordFeedback({
+      word: result.word || currentWord,
+      accepted: result.success,
+      ...(result.reason ? { reason: result.reason } : {}),
+    });
   }, [isViewer, currentWord, sendBoggleWord, clearSelection, submitWord]);
 
   // Rotation animation state
@@ -414,8 +419,9 @@ export default function BoggleGame() {
 
   const handleJoin = useCallback(
     (code: string, pin?: string) => {
+      if (!joinGame('boggle', code, pin)) return;
+
       setLoadingError('');
-      joinGame('boggle', code, pin);
       setLocalGameMode('multiplayer');
       setGamePhase('loading');
     },
