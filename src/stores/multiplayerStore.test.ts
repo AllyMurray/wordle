@@ -136,13 +136,15 @@ import {
   registerStateRequestCallback,
   registerBoggleStateCallback,
   registerBoggleWordCallback,
+  registerBoggleWordResultCallback,
 } from './multiplayerStore';
 import { loadPeerJS } from './peerConnection';
+import { NETWORK_CONFIG } from '../types';
 
 // Helper to wait for async PeerJS loading to complete
-// Uses vi.runAllTimersAsync() to handle both timers and microtasks
 const flushAsyncOperations = async () => {
-  await vi.runAllTimersAsync();
+  await Promise.resolve();
+  await Promise.resolve();
 };
 
 describe('multiplayerStore', () => {
@@ -241,6 +243,25 @@ describe('multiplayerStore', () => {
   });
 
   describe('hostGame', () => {
+    it('clears a previous session code while creating a new host', () => {
+      act(() => {
+        useMultiplayerStore.setState({ sessionCode: 'ABCDEF-abc123' });
+        useMultiplayerStore.getState().hostGame('wordle');
+      });
+
+      expect(useMultiplayerStore.getState().sessionCode).toBe('');
+    });
+
+    it('reports an error when host setup never opens', async () => {
+      act(() => useMultiplayerStore.getState().hostGame('wordle'));
+      await act(async () => flushAsyncOperations());
+
+      act(() => vi.advanceTimersByTime(NETWORK_CONFIG.CONNECTION_SETUP_TIMEOUT_MS));
+
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('error');
+      expect(useMultiplayerStore.getState().errorMessage).toContain('timed out');
+    });
+
     it('should set role to host and status to connecting', () => {
       const { hostGame } = useMultiplayerStore.getState();
 
@@ -320,6 +341,7 @@ describe('multiplayerStore', () => {
 
       const viewer = createMockConnection(true);
       act(() => {
+        mockPeerInstance?._triggerOpen();
         mockPeerInstance?._triggerConnection(viewer as unknown as DataConnection);
         viewer._triggerOpen();
       });
@@ -550,6 +572,20 @@ describe('multiplayerStore', () => {
   });
 
   describe('joinGame', () => {
+    it('reports an error when authentication never completes', async () => {
+      act(() => useMultiplayerStore.getState().joinGame('wordle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        vi.advanceTimersByTime(NETWORK_CONFIG.CONNECTION_SETUP_TIMEOUT_MS);
+      });
+
+      expect(useMultiplayerStore.getState().connectionStatus).toBe('error');
+      expect(useMultiplayerStore.getState().errorMessage).toContain('timed out');
+    });
+
     it('should reject invalid session code', () => {
       const { joinGame } = useMultiplayerStore.getState();
 
@@ -751,6 +787,7 @@ describe('multiplayerStore', () => {
           errorMessage: 'some error',
           partnerConnected: true,
           pendingSuggestion: { word: 'HELLO' },
+          currentGameId: 'wordle',
         });
       });
 
@@ -768,6 +805,7 @@ describe('multiplayerStore', () => {
       expect(state.errorMessage).toBe('');
       expect(state.partnerConnected).toBe(false);
       expect(state.pendingSuggestion).toBe(null);
+      expect(state.currentGameId).toBe('');
     });
 
     it('should ignore PeerJS loading that completes after leaving', async () => {
@@ -879,10 +917,17 @@ describe('multiplayerStore', () => {
 
       // Viewer clears suggestion
       act(() => {
-        mockViewerConn._triggerData({ type: 'clear-suggestion' });
+        mockViewerConn._triggerData({
+          type: 'clear-suggestion',
+          _messageId: 'clear-suggestion-1',
+        });
       });
 
       expect(useMultiplayerStore.getState().pendingSuggestion).toBe(null);
+      expect(mockViewerConn.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'clear-suggestion-1',
+      });
     });
 
     it('should accept suggestion and return the word', async () => {
@@ -1043,12 +1088,44 @@ describe('multiplayerStore', () => {
       if (gameStateCall) {
         const sentMessage = gameStateCall[0] as {
           type: string;
+          revision: number;
           state: { solution?: string; guesses: unknown[]; currentGuess: string };
         };
+        expect(sentMessage.revision).toBe(1);
         expect(sentMessage.state.solution).toBeUndefined();
         expect(sentMessage.state.guesses).toHaveLength(1);
         expect(sentMessage.state.currentGuess).toBe('WO');
       }
+    });
+
+    it('increments the revision for each authoritative state', async () => {
+      act(() => useMultiplayerStore.getState().hostGame('wordle'));
+      await act(async () => flushAsyncOperations());
+      const viewer = createMockConnection(true);
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        mockPeerInstance?._triggerConnection(viewer as unknown as DataConnection);
+        viewer._triggerOpen();
+      });
+
+      const state = {
+        solution: 'CRANE',
+        guesses: [],
+        currentGuess: '',
+        gameOver: false,
+        won: false,
+        message: '',
+      };
+      act(() => {
+        useMultiplayerStore.getState().sendGameState(state);
+        useMultiplayerStore.getState().sendGameState(state);
+      });
+
+      const revisions = viewer.send.mock.calls
+        .map((call) => call[0])
+        .filter((message) => message.type === 'game-state')
+        .map((message) => message.revision);
+      expect(revisions).toEqual([1, 2]);
     });
   });
 
@@ -1086,6 +1163,25 @@ describe('multiplayerStore', () => {
         clearSuggestion();
       });
     });
+
+    it('sends the clear request with acknowledgment tracking', async () => {
+      act(() => useMultiplayerStore.getState().joinGame('wordle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        useMultiplayerStore.getState().clearSuggestion();
+      });
+
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'clear-suggestion',
+          _messageId: expect.any(String),
+        })
+      );
+    });
   });
 
   describe('callback registration', () => {
@@ -1107,9 +1203,13 @@ describe('multiplayerStore', () => {
 
     it('should register and clear Boggle callbacks', () => {
       expect(() => registerBoggleStateCallback(vi.fn())).not.toThrow();
-      expect(() => registerBoggleWordCallback(vi.fn())).not.toThrow();
+      expect(() =>
+        registerBoggleWordCallback(vi.fn(() => ({ word: 'TEST', accepted: true })))
+      ).not.toThrow();
+      expect(() => registerBoggleWordResultCallback(vi.fn())).not.toThrow();
       expect(() => registerBoggleStateCallback(null)).not.toThrow();
       expect(() => registerBoggleWordCallback(null)).not.toThrow();
+      expect(() => registerBoggleWordResultCallback(null)).not.toThrow();
     });
   });
 
@@ -1144,7 +1244,11 @@ describe('multiplayerStore', () => {
     });
 
     it('should deliver and acknowledge viewer Boggle words to the host', async () => {
-      const callback = vi.fn();
+      const callback = vi.fn(() => ({
+        word: 'TEST',
+        accepted: false,
+        reason: 'Already found',
+      }));
       registerBoggleWordCallback(callback);
       act(() => {
         useMultiplayerStore.getState().hostGame('boggle');
@@ -1169,6 +1273,15 @@ describe('multiplayerStore', () => {
         type: 'ack',
         messageId: 'boggle-word-1',
       });
+      expect(viewerConnection.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'boggle-word-result',
+          word: 'TEST',
+          accepted: false,
+          reason: 'Already found',
+          _messageId: expect.any(String),
+        })
+      );
       registerBoggleWordCallback(null);
     });
 
@@ -1185,10 +1298,12 @@ describe('multiplayerStore', () => {
       const boggleState = {
         board: {
           grid: [
-            ['T', 'E'],
-            ['S', 'T'],
+            ['T', 'E', 'S', 'T'],
+            ['A', 'R', 'E', 'A'],
+            ['G', 'A', 'M', 'E'],
+            ['W', 'O', 'R', 'D'],
           ],
-          size: 2,
+          size: 4,
         },
         foundWords: ['TEST'],
         score: 1,
@@ -1203,6 +1318,7 @@ describe('multiplayerStore', () => {
         lastCreatedConnection?._triggerData({ type: 'auth-success' });
         lastCreatedConnection?._triggerData({
           type: 'boggle-state',
+          revision: 1,
           state: boggleState,
           _messageId: 'boggle-state-1',
         });
@@ -1216,6 +1332,37 @@ describe('multiplayerStore', () => {
       registerBoggleStateCallback(null);
     });
 
+    it('delivers and acknowledges a host word result to the viewer', async () => {
+      const callback = vi.fn();
+      registerBoggleWordResultCallback(callback);
+      act(() => useMultiplayerStore.getState().joinGame('boggle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        lastCreatedConnection?._triggerData({
+          type: 'boggle-word-result',
+          word: 'TEST',
+          accepted: false,
+          reason: 'Already found',
+          _messageId: 'word-result-1',
+        });
+      });
+
+      expect(callback).toHaveBeenCalledWith({
+        word: 'TEST',
+        accepted: false,
+        reason: 'Already found',
+      });
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'word-result-1',
+      });
+      registerBoggleWordResultCallback(null);
+    });
+
     it('should acknowledge but not reapply a retried Boggle snapshot', async () => {
       const callback = vi.fn();
       registerBoggleStateCallback(callback);
@@ -1224,8 +1371,17 @@ describe('multiplayerStore', () => {
 
       const message = {
         type: 'boggle-state',
+        revision: 1,
         state: {
-          board: { grid: [['T']], size: 1 },
+          board: {
+            grid: [
+              ['T', 'E', 'S', 'T'],
+              ['A', 'R', 'E', 'A'],
+              ['G', 'A', 'M', 'E'],
+              ['W', 'O', 'R', 'D'],
+            ],
+            size: 4,
+          },
           foundWords: [],
           score: 0,
           gameOver: false,
@@ -1249,6 +1405,56 @@ describe('multiplayerStore', () => {
         messageId: 'retried-state-1',
       });
       expect(lastCreatedConnection?.send).toHaveBeenCalledTimes(4);
+      registerBoggleStateCallback(null);
+    });
+
+    it('ignores an older Boggle snapshot even when it has a new message ID', async () => {
+      const callback = vi.fn();
+      registerBoggleStateCallback(callback);
+      act(() => useMultiplayerStore.getState().joinGame('boggle', 'ABCDEF-abc123'));
+      await act(async () => flushAsyncOperations());
+
+      const state = {
+        board: {
+          grid: [
+            ['T', 'E', 'S', 'T'],
+            ['A', 'R', 'E', 'A'],
+            ['G', 'A', 'M', 'E'],
+            ['W', 'O', 'R', 'D'],
+          ],
+          size: 4,
+        },
+        foundWords: [],
+        score: 0,
+        gameOver: false,
+        timeRemaining: 120,
+        timedMode: true,
+      };
+
+      act(() => {
+        mockPeerInstance?._triggerOpen();
+        lastCreatedConnection?._triggerOpen();
+        lastCreatedConnection?._triggerData({ type: 'auth-success' });
+        lastCreatedConnection?._triggerData({
+          type: 'boggle-state',
+          revision: 2,
+          state,
+          _messageId: 'new-state',
+        });
+        lastCreatedConnection?._triggerData({
+          type: 'boggle-state',
+          revision: 1,
+          state: { ...state, score: 99 },
+          _messageId: 'stale-state',
+        });
+      });
+
+      expect(callback).toHaveBeenCalledOnce();
+      expect(callback).toHaveBeenCalledWith(state);
+      expect(lastCreatedConnection?.send).toHaveBeenCalledWith({
+        type: 'ack',
+        messageId: 'stale-state',
+      });
       registerBoggleStateCallback(null);
     });
 
@@ -1509,7 +1715,7 @@ describe('multiplayerStore', () => {
       // Send 3 failed auth attempts
       for (let i = 0; i < 3; i++) {
         act(() => {
-          mockViewerConn._triggerData({ type: 'auth-request', pin: 'wrong' });
+          mockViewerConn._triggerData({ type: 'auth-request', pin: '0000' });
         });
       }
 

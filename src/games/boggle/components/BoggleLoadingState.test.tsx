@@ -3,6 +3,18 @@ import { describe, expect, it } from 'vitest';
 import { BoggleLoadingState } from './BoggleLoadingState';
 
 describe('BoggleLoadingState', () => {
+  it('shows dictionary loading failures for solo games', () => {
+    render(
+      <BoggleLoadingState
+        isMultiplayerViewer={false}
+        connectionStatus="disconnected"
+        errorMessage="Unable to load the word list."
+      />
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the word list.');
+  });
+
   it('shows a viewer connection failure instead of an indefinite loading message', () => {
     render(
       <BoggleLoadingState

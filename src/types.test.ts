@@ -5,6 +5,7 @@ import {
   parseSessionCode,
   sanitizeSessionPin,
   isValidSessionPin,
+  validatePeerMessage,
   GAME_CONFIG,
 } from './types';
 
@@ -128,6 +129,95 @@ describe('Session Code Functions', () => {
       expect(parseSessionCode('ABC-a3f2b1')).toBeNull();
       expect(parseSessionCode('ABCDEF-a3f')).toBeNull();
     });
+  });
+});
+
+describe('peer message validation', () => {
+  const validBoggleState = {
+    type: 'boggle-state',
+    revision: 1,
+    state: {
+      board: {
+        grid: [
+          ['Qu', 'A', 'T', 'S'],
+          ['D', 'O', 'G', 'E'],
+          ['R', 'A', 'T', 'S'],
+          ['B', 'I', 'R', 'D'],
+        ],
+        size: 4,
+      },
+      foundWords: ['QUA'],
+      score: 1,
+      gameOver: false,
+      timeRemaining: 180,
+      timedMode: true,
+    },
+    _messageId: 'state-1',
+  };
+
+  it('accepts bounded messages and their reliability identifier', () => {
+    expect(validatePeerMessage(validBoggleState).success).toBe(true);
+    expect(
+      validatePeerMessage({ type: 'suggest-word', word: 'CRANE', _messageId: 'suggestion-1' })
+        .success
+    ).toBe(true);
+    expect(
+      validatePeerMessage({
+        type: 'boggle-word-result',
+        word: 'QUA',
+        accepted: false,
+        reason: 'Already found',
+      }).success
+    ).toBe(true);
+  });
+
+  it('rejects malformed Wordle state shapes', () => {
+    expect(
+      validatePeerMessage({
+        type: 'game-state',
+        revision: 1,
+        state: {
+          guesses: [{ word: 'TOO-LONG', status: ['correct'] }],
+          currentGuess: '12345',
+          gameOver: false,
+          won: false,
+          message: '',
+        },
+      }).success
+    ).toBe(false);
+  });
+
+  it('rejects arbitrary Boggle board dimensions and tiles', () => {
+    expect(
+      validatePeerMessage({
+        ...validBoggleState,
+        state: {
+          ...validBoggleState.state,
+          board: { grid: [['NOT-A-TILE']], size: 1 },
+        },
+      }).success
+    ).toBe(false);
+  });
+
+  it('rejects oversized arrays and strings', () => {
+    expect(
+      validatePeerMessage({
+        ...validBoggleState,
+        state: {
+          ...validBoggleState.state,
+          foundWords: Array(5_001).fill('CAT'),
+        },
+      }).success
+    ).toBe(false);
+    expect(validatePeerMessage({ type: 'suggest-word', word: 'A'.repeat(10_000) }).success).toBe(
+      false
+    );
+  });
+
+  it('rejects unexpected fields', () => {
+    expect(
+      validatePeerMessage({ type: 'request-state', unexpected: 'payload' }).success
+    ).toBe(false);
   });
 });
 

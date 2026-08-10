@@ -2,21 +2,33 @@ import { useEffect, useCallback, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBoggleStore } from './store';
 import { useTimerStore } from '../../stores/timerStore';
-import { BoggleBoard, Timer, WordList, AllWordsList, BoggleLoadingState } from './components';
+import {
+  BoggleBoard,
+  Timer,
+  WordList,
+  AllWordsList,
+  BoggleLoadingState,
+  BoggleWordFeedback,
+  BoggleStats,
+} from './components';
 import { GameLayout } from '../../components/GameLayout/GameLayout';
 import Lobby from '../../components/Lobby';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import { ConnectionAlert } from '../../components/ConnectionAlert';
 import {
   registerBoggleStateCallback,
   registerBoggleWordCallback,
+  registerBoggleWordResultCallback,
   registerStateRequestCallback,
   useMultiplayerStore,
-  useStatsStore,
-} from '../../stores';
+} from '../../stores/multiplayerStore';
+import { useStatsStore } from '../../stores/statsStore';
+import { useUIStore } from '../../stores/uiStore';
 import { useMultiplayerReconnection } from '../../hooks/useMultiplayerReconnection';
 import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';
 import type { GameMode } from '../../types';
+import type { BoggleWordResult } from '../../types';
 import './BoggleGame.css';
 
 const GAME_DURATION = 180; // 3 minutes
@@ -27,6 +39,8 @@ export default function BoggleGame() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [loadingError, setLoadingError] = useState('');
+  const [wordFeedback, setWordFeedback] = useState<BoggleWordResult | null>(null);
 
   // Game phase state machine: lobby → modeSelect → loading → playing → gameOver
   const [gamePhase, setGamePhase] = useState<GamePhase>('lobby');
@@ -82,6 +96,10 @@ export default function BoggleGame() {
 
   // Stats
   const recordBoggleGame = useStatsStore((s) => s.recordBoggleGame);
+  const boggleStats = useStatsStore((s) => s.boggleStats);
+  const isStatsOpen = useUIStore((s) => s.isStatsOpen);
+  const openStats = useUIStore((s) => s.openStats);
+  const closeStats = useUIStore((s) => s.closeStats);
 
   // Track game completion for stats
   const lastRecordedGameRef = useRef<string | null>(null);
@@ -105,6 +123,7 @@ export default function BoggleGame() {
     initGame()
       .then(() => {
         if (!cancelled) {
+          setLoadingError('');
           setGamePhase('playing');
           if (timedMode) {
             startTimer(GAME_DURATION);
@@ -113,8 +132,7 @@ export default function BoggleGame() {
       })
       .catch(() => {
         if (!cancelled) {
-          // On error, return to lobby
-          setGamePhase('lobby');
+          setLoadingError('Unable to load the word list. Check your connection and try again.');
         }
       });
 
@@ -154,12 +172,21 @@ export default function BoggleGame() {
     ) {
       lastRecordedGameRef.current = gameIdentifier;
       recordBoggleGame(score, foundWords.length, localGameMode === 'solo' ? 'solo' : 'multiplayer');
+      openStats();
     }
 
     if (!isGameOver && lastRecordedGameRef.current !== null) {
       lastRecordedGameRef.current = null;
     }
-  }, [gamePhase, localGameMode, isViewer, score, foundWords.length, recordBoggleGame]);
+  }, [
+    gamePhase,
+    localGameMode,
+    isViewer,
+    score,
+    foundWords.length,
+    recordBoggleGame,
+    openStats,
+  ]);
 
   // Handle page visibility changes for connection restoration
   useMultiplayerReconnection();
@@ -169,10 +196,16 @@ export default function BoggleGame() {
     if (!isViewer) return;
 
     registerBoggleStateCallback((state) => {
-      applyMultiplayerState(state);
-      resetTimer(state.timeRemaining);
-      setTimedMode(state.timedMode);
-      setGamePhase(state.gameOver ? 'gameOver' : 'playing');
+      void applyMultiplayerState(state)
+        .then(() => {
+          setLoadingError('');
+          resetTimer(state.timeRemaining);
+          setTimedMode(state.timedMode);
+          setGamePhase(state.gameOver ? 'gameOver' : 'playing');
+        })
+        .catch(() => {
+          setLoadingError('Unable to load the word list. Check your connection and try again.');
+        });
     });
 
     return () => registerBoggleStateCallback(null);
@@ -183,11 +216,29 @@ export default function BoggleGame() {
     if (!isHost) return;
 
     registerBoggleWordCallback((word) => {
-      submitWordByText(word);
+      const result = submitWordByText(word);
+      return {
+        word: result.word || word,
+        accepted: result.success,
+        ...(result.reason ? { reason: result.reason } : {}),
+      };
     });
 
     return () => registerBoggleWordCallback(null);
   }, [isHost, submitWordByText]);
+
+  useEffect(() => {
+    if (!isViewer) return;
+
+    registerBoggleWordResultCallback(setWordFeedback);
+    return () => registerBoggleWordResultCallback(null);
+  }, [isViewer]);
+
+  useEffect(() => {
+    if (!wordFeedback) return;
+    const timeout = setTimeout(() => setWordFeedback(null), 2500);
+    return () => clearTimeout(timeout);
+  }, [wordFeedback]);
 
   // Broadcast host-authoritative state, including the timer, on every change.
   useEffect(() => {
@@ -253,18 +304,21 @@ export default function BoggleGame() {
 
   const handleBackToLobby = useCallback(() => {
     stopTimer();
+    closeStats();
     resetGame();
     leaveSession();
     setLocalGameMode(null);
     setTimedMode(true);
+    setLoadingError('');
     setGamePhase('lobby');
-  }, [stopTimer, resetGame, leaveSession]);
+  }, [stopTimer, closeStats, resetGame, leaveSession]);
 
   const handleRouteCleanup = useCallback(() => {
     stopTimer();
+    closeStats();
     resetGame();
     leaveSession();
-  }, [stopTimer, resetGame, leaveSession]);
+  }, [stopTimer, closeStats, resetGame, leaveSession]);
 
   useGameRouteCleanup(handleRouteCleanup);
 
@@ -273,12 +327,15 @@ export default function BoggleGame() {
 
   const handleNewGame = useCallback(() => {
     setSelectedWord(null);
+    closeStats();
+    setLoadingError('');
     setGamePhase('loading');
-  }, []);
+  }, [closeStats]);
 
   const handleSubmit = useCallback(() => {
     if (isViewer) {
       if (currentWord.length >= 3) {
+        setWordFeedback(null);
         sendBoggleWord(currentWord);
       }
       clearSelection();
@@ -329,11 +386,13 @@ export default function BoggleGame() {
 
   const handleStartTimed = useCallback(() => {
     setTimedMode(true);
+    setLoadingError('');
     setGamePhase('loading');
   }, []);
 
   const handleStartUntimed = useCallback(() => {
     setTimedMode(false);
+    setLoadingError('');
     setGamePhase('loading');
   }, []);
 
@@ -345,6 +404,7 @@ export default function BoggleGame() {
 
   const handleHost = useCallback(
     (pin?: string) => {
+      setLoadingError('');
       hostGame('boggle', pin);
       setLocalGameMode('multiplayer');
       setGamePhase('loading');
@@ -354,6 +414,7 @@ export default function BoggleGame() {
 
   const handleJoin = useCallback(
     (code: string, pin?: string) => {
+      setLoadingError('');
       joinGame('boggle', code, pin);
       setLocalGameMode('multiplayer');
       setGamePhase('loading');
@@ -430,7 +491,7 @@ export default function BoggleGame() {
           <BoggleLoadingState
             isMultiplayerViewer={localGameMode === 'multiplayer' && isViewer}
             connectionStatus={connectionStatus}
-            errorMessage={errorMessage}
+            errorMessage={loadingError || errorMessage}
           />
         </div>
       </GameLayout>
@@ -438,7 +499,16 @@ export default function BoggleGame() {
   }
 
   return (
-    <GameLayout gameId="boggle" gameName="Boggle" onBack={handleBackToLobby}>
+    <GameLayout
+      gameId="boggle"
+      gameName="Boggle"
+      onBack={handleBackToLobby}
+      headerActions={
+        <button className="stats-btn" onClick={openStats} aria-label="View Boggle statistics">
+          Stats
+        </button>
+      }
+    >
       <div className="boggle-game">
         {/* Connection status for multiplayer */}
         {localGameMode === 'multiplayer' && (
@@ -449,36 +519,45 @@ export default function BoggleGame() {
             <div className="connection-status">
               {isHost && (
                 <div className="session-info">
-                  <span className="session-label">Share code:</span>
-                  <span className="session-code">{sessionCode}</span>
-                  {sessionPin && (
-                    <span className="session-pin-indicator" title={`PIN: ${sessionPin}`}>
-                      🔒
-                    </span>
-                  )}
-                  <div className="share-buttons">
-                    <button
-                      className="share-btn copy"
-                      onClick={handleCopyLink}
-                      aria-label="Copy game link to clipboard"
-                      title="Copy link"
-                    >
-                      {copyFeedback ? 'Copied!' : 'Copy Link'}
-                    </button>
-                    <button
-                      className="share-btn whatsapp"
-                      onClick={handleWhatsAppShare}
-                      aria-label="Share game link via WhatsApp"
-                      title="Share on WhatsApp"
-                    >
-                      WhatsApp
-                    </button>
-                  </div>
-                  {partnerConnected ? (
-                    <span className="partner-status connected">Partner connected</span>
-                  ) : (
-                    <span className="partner-status waiting">Waiting for partner...</span>
-                  )}
+                  {sessionCode ? (
+                    <>
+                      <span className="session-label">Share code:</span>
+                      <span className="session-code">{sessionCode}</span>
+                      {sessionPin && (
+                        <span className="session-pin-indicator" title={`PIN: ${sessionPin}`}>
+                          🔒
+                        </span>
+                      )}
+                      <div className="share-buttons">
+                        <button
+                          className="share-btn copy"
+                          onClick={handleCopyLink}
+                          aria-label="Copy game link to clipboard"
+                          title="Copy link"
+                        >
+                          {copyFeedback ? 'Copied!' : 'Copy Link'}
+                        </button>
+                        <button
+                          className="share-btn whatsapp"
+                          onClick={handleWhatsAppShare}
+                          aria-label="Share game link via WhatsApp"
+                          title="Share on WhatsApp"
+                        >
+                          WhatsApp
+                        </button>
+                      </div>
+                    </>
+                  ) : connectionStatus !== 'error' ? (
+                    <span className="partner-status waiting">Creating session...</span>
+                  ) : null}
+                  <ConnectionAlert status={connectionStatus} message={errorMessage} />
+                  {connectionStatus !== 'error' &&
+                    sessionCode &&
+                    (partnerConnected ? (
+                      <span className="partner-status connected">Partner connected</span>
+                    ) : (
+                      <span className="partner-status waiting">Waiting for partner...</span>
+                    ))}
                 </div>
               )}
               {isViewer && (
@@ -490,14 +569,14 @@ export default function BoggleGame() {
                   {connectionStatus === 'connected' && (
                     <span className="partner-status connected">Connected</span>
                   )}
-                  {connectionStatus === 'error' && (
-                    <span className="partner-status error">{errorMessage}</span>
-                  )}
+                  <ConnectionAlert status={connectionStatus} message={errorMessage} />
                 </div>
               )}
             </div>
           </ErrorBoundary>
         )}
+
+        <BoggleWordFeedback result={wordFeedback} />
 
         <div className="boggle-game-bar">
           <div className="boggle-stats-bar">
@@ -601,6 +680,7 @@ export default function BoggleGame() {
             currentWord={currentWord}
             onTileSelect={selectTile}
             onSubmit={handleSubmit}
+            onClear={clearSelection}
             disabled={gamePhase === 'gameOver'}
             rotationAnimation={rotationAnimation}
             onRotationAnimationEnd={handleRotationAnimationEnd}
@@ -619,8 +699,8 @@ export default function BoggleGame() {
             )}
           </div>
         </div>
-
       </div>
+      <BoggleStats stats={boggleStats} isOpen={isStatsOpen} onClose={closeStats} />
     </GameLayout>
   );
 }

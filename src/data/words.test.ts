@@ -8,9 +8,8 @@ describe('Wordle dictionaries', () => {
   });
 
   it('contains the complete pinned allowed-guess dictionary', () => {
-    expect(ALLOWED_GUESSES).toHaveLength(14_855);
-    expect(new Set(ALLOWED_GUESSES).size).toBe(ALLOWED_GUESSES.length);
-    expect(ALLOWED_GUESSES.every((word) => /^[a-z]{5}$/.test(word))).toBe(true);
+    expect(ALLOWED_GUESSES.size).toBe(14_855);
+    expect([...ALLOWED_GUESSES].every((word) => /^[a-z]{5}$/.test(word))).toBe(true);
   });
 
   it('accepts dictionary guesses that are not selected as solutions', () => {

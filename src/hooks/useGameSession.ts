@@ -5,19 +5,22 @@ import { useWindowKeyDown } from './useWindowKeyDown';
 import { isValidGuess } from '../data/words';
 import {
   useGameStore,
+  MAX_GUESSES_COUNT,
+  WORD_LENGTH_COUNT,
+} from '../stores/gameStore';
+import {
   useMultiplayerStore,
-  useUIStore,
   registerGameStateCallback,
   registerSuggestionResponseCallback,
   registerStateRequestCallback,
-  MAX_GUESSES_COUNT,
-  WORD_LENGTH_COUNT,
-} from '../stores';
+} from '../stores/multiplayerStore';
+import { useUIStore } from '../stores/uiStore';
 import type {
   GameMode,
   SuggestionStatus,
   Guess,
   KeyboardStatus,
+  ConnectionStatus,
 } from '../types';
 
 // Return type for useGameSession hook
@@ -41,7 +44,7 @@ export interface UseGameSessionReturn {
   partnerConnected: boolean;
   sessionCode: string;
   sessionPin: string;
-  connectionStatus: string;
+  connectionStatus: ConnectionStatus;
   errorMessage: string;
   pendingSuggestion: { word: string } | null;
 
@@ -119,6 +122,7 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
   const suggestionStatus = useUIStore((s) => s.suggestionStatus);
   const setSuggestionStatus = useUIStore((s) => s.setSuggestionStatus);
   const isStatsOpen = useUIStore((s) => s.isStatsOpen);
+  const closeStats = useUIStore((s) => s.closeStats);
 
   const isHost = role === 'host';
   const isViewer = role === 'viewer';
@@ -271,34 +275,45 @@ export const useGameSession = (gameId: string = 'wordle'): UseGameSessionReturn 
     [handleKeyPress, viewerGuess, setSuggestionStatus]
   );
 
-  useWindowKeyDown(gameMode === 'multiplayer' && !isStatsOpen, handleKeyDown);
+  useWindowKeyDown(gameMode !== null && !isStatsOpen, handleKeyDown);
 
   // Game session action handlers
   const handlePlaySolo = useCallback((): void => {
+    closeStats();
+    setSuggestionStatus(null);
+    newGame();
     setGameMode('solo');
-  }, [setGameMode]);
+  }, [closeStats, newGame, setGameMode, setSuggestionStatus]);
 
   const handleHost = useCallback(
     (pin?: string): void => {
+      closeStats();
+      setSuggestionStatus(null);
+      newGame();
       hostGame(gameId, pin);
       setGameMode('multiplayer');
     },
-    [hostGame, setGameMode, gameId]
+    [closeStats, newGame, hostGame, setGameMode, setSuggestionStatus, gameId]
   );
 
   const handleJoin = useCallback(
     (code: string, pin?: string): void => {
+      closeStats();
+      setSuggestionStatus(null);
+      newGame();
       joinGame(gameId, code, pin);
       setGameMode('multiplayer');
     },
-    [joinGame, setGameMode, gameId]
+    [closeStats, newGame, joinGame, setGameMode, setSuggestionStatus, gameId]
   );
 
   const handleLeave = useCallback((): void => {
     leaveSession();
+    closeStats();
+    setSuggestionStatus(null);
     setGameMode(null);
     newGame();
-  }, [leaveSession, setGameMode, newGame]);
+  }, [leaveSession, closeStats, setSuggestionStatus, setGameMode, newGame]);
 
   const handleNewGame = useCallback((): void => {
     newGame();

@@ -11,6 +11,7 @@ const STATIC_ASSETS = [
   '/gamehub/icons/icon-192.svg',
   '/gamehub/icons/icon-512.svg',
   '/gamehub/icons/icon-maskable.svg',
+  BASE_PATH + 'data/boggle-words.txt',
 ];
 
 // Vite records every hashed entry, CSS file, and lazy chunk in this manifest.
@@ -45,8 +46,6 @@ self.addEventListener('install', (event) => {
       await cacheBuildAssets(cache);
     })
   );
-  // Take control immediately
-  self.skipWaiting();
 });
 
 // Activate event - clean up old caches
@@ -60,8 +59,6 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
-  // Take control of all clients immediately
-  self.clients.claim();
 });
 
 // Fetch event - serve from cache with network fallback

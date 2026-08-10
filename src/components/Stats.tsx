@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { GAME_CONFIG, type GameStatistics } from '../types';
+import { ModalDialog } from './ModalDialog';
 import './Stats.css';
 
 interface StatsProps {
@@ -19,44 +20,8 @@ const Stats = memo(function Stats({
   onClose,
   lastGuessCount,
 }: StatsProps) {
-  if (!isOpen) {
-    return null;
-  }
-
-  const handleOverlayClick = (e: React.MouseEvent): void => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent): void => {
-    if (e.key === 'Escape') {
-      onClose();
-    }
-  };
-
   return (
-    <div
-      className="stats-overlay"
-      onClick={handleOverlayClick}
-      onKeyDown={handleKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="stats-title"
-    >
-      <div className="stats-modal">
-        <button
-          className="stats-close"
-          onClick={onClose}
-          aria-label="Close statistics"
-        >
-          &times;
-        </button>
-
-        <h2 id="stats-title" className="stats-title">
-          Statistics
-        </h2>
-
+    <ModalDialog isOpen={isOpen} title="Statistics" titleId="stats-title" onClose={onClose}>
         <div className="stats-summary">
           <div className="stat-item">
             <div className="stat-value">{stats.gamesPlayed}</div>
@@ -110,8 +75,7 @@ const Stats = memo(function Stats({
             </p>
           </div>
         )}
-      </div>
-    </div>
+    </ModalDialog>
   );
 });
 

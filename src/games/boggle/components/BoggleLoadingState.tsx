@@ -11,6 +11,14 @@ export function BoggleLoadingState({
   connectionStatus,
   errorMessage,
 }: BoggleLoadingStateProps) {
+  if (errorMessage) {
+    return (
+      <div className="partner-status error" role="alert">
+        {errorMessage}
+      </div>
+    );
+  }
+
   if (!isMultiplayerViewer) {
     return <div className="loading">Loading dictionary...</div>;
   }
@@ -18,7 +26,7 @@ export function BoggleLoadingState({
   if (connectionStatus === 'error') {
     return (
       <div className="partner-status error" role="alert">
-        {errorMessage || 'Unable to connect to the host.'}
+        Unable to connect to the host.
       </div>
     );
   }

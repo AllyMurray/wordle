@@ -22,7 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-const ALLOWED_GUESSES_TEXT = `
+export const ALLOWED_GUESSES: ReadonlySet<string> = new Set(`
 rossa
 jetty
 wizzo
@@ -14878,6 +14878,4 @@ decal
 fungs
 cadgy
 jalap
-`;
-
-export const ALLOWED_GUESSES: readonly string[] = ALLOWED_GUESSES_TEXT.trim().split('\n');
+`.trim().split('\n'));

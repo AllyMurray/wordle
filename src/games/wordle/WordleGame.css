@@ -61,25 +61,6 @@
   box-shadow: 0 4px 12px var(--color-correct-glow);
 }
 
-/* Stats button */
-.stats-btn {
-  background: none;
-  border: none;
-  color: var(--color-text-secondary);
-  font-family: var(--font-family);
-  font-size: var(--font-size-base);
-  cursor: pointer;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-base);
-  min-width: 70px;
-}
-
-.stats-btn:hover {
-  background-color: var(--color-bg-tertiary);
-  color: var(--color-text-primary);
-}
-
 /* Connection status styles */
 .connection-status {
   background-color: var(--color-bg-secondary);

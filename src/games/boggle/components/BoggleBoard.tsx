@@ -8,6 +8,7 @@ interface BoggleBoardProps {
   currentWord: string;
   onTileSelect: (pos: Position) => void;
   onSubmit: () => void;
+  onClear: () => void;
   disabled?: boolean;
   rotationAnimation?: 'left' | 'right' | null;
   onRotationAnimationEnd?: () => void;
@@ -20,6 +21,7 @@ export const BoggleBoard = memo(function BoggleBoard({
   currentWord,
   onTileSelect,
   onSubmit,
+  onClear,
   disabled,
   rotationAnimation,
   onRotationAnimationEnd,
@@ -89,7 +91,7 @@ export const BoggleBoard = memo(function BoggleBoard({
       // Check if clicking on the last selected tile - this submits the word
       const lastInPath = selectedPath.length > 0 ? selectedPath[selectedPath.length - 1] : null;
       if (lastInPath && lastInPath.row === row && lastInPath.col === col) {
-        if (selectedPath.length >= 3) {
+        if (currentWord.length >= 3) {
           onSubmit();
         }
         return;
@@ -104,7 +106,7 @@ export const BoggleBoard = memo(function BoggleBoard({
       boardRef.current?.setPointerCapture(event.pointerId);
       onTileSelect({ row, col });
     },
-    [disabled, onTileSelect, selectedPath, onSubmit]
+    [currentWord.length, disabled, onTileSelect, selectedPath, onSubmit]
   );
 
   const handlePointerMove = useCallback(
@@ -140,11 +142,45 @@ export const BoggleBoard = memo(function BoggleBoard({
       }
       // Only auto-submit if user actually dragged to select multiple tiles
       // Individual clicks should add to path without auto-submitting
-      if (didDragMultiple && selectedPath.length >= 3) {
+      if (didDragMultiple && currentWord.length >= 3) {
         onSubmit();
       }
     }
-  }, [selectedPath.length, onSubmit]);
+  }, [currentWord.length, onSubmit]);
+
+  const handleTileKeyDown = useCallback(
+    (event: React.KeyboardEvent, row: number, col: number) => {
+      if (disabled) return;
+
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        const lastInPath = selectedPath[selectedPath.length - 1];
+        if (lastInPath?.row === row && lastInPath.col === col) {
+          if (currentWord.length >= 3) onSubmit();
+        } else {
+          onTileSelect({ row, col });
+        }
+        return;
+      }
+
+      const offsets: Record<string, Position> = {
+        ArrowUp: { row: -1, col: 0 },
+        ArrowDown: { row: 1, col: 0 },
+        ArrowLeft: { row: 0, col: -1 },
+        ArrowRight: { row: 0, col: 1 },
+      };
+      const offset = offsets[event.key];
+      if (!offset) return;
+
+      event.preventDefault();
+      const nextRow = Math.min(Math.max(row + offset.row, 0), board.size - 1);
+      const nextCol = Math.min(Math.max(col + offset.col, 0), board.size - 1);
+      boardRef.current
+        ?.querySelector<HTMLButtonElement>(`[data-row="${nextRow}"][data-col="${nextCol}"]`)
+        ?.focus();
+    },
+    [board.size, currentWord.length, disabled, onSubmit, onTileSelect, selectedPath]
+  );
 
   return (
     <div className="boggle-board-container">
@@ -156,7 +192,12 @@ export const BoggleBoard = memo(function BoggleBoard({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
-        <div className={`current-word${currentWord ? '' : ' current-word--empty'}`}>
+        <div
+          className={`current-word${currentWord ? '' : ' current-word--empty'}`}
+          role="status"
+          aria-live="polite"
+          aria-label={currentWord ? `Current word: ${currentWord}` : 'No letters selected'}
+        >
           {currentWord || '\u00A0'}
         </div>
         <div
@@ -178,9 +219,11 @@ export const BoggleBoard = memo(function BoggleBoard({
                     data-row={rowIndex}
                     data-col={colIndex}
                     onPointerDown={(e) => handlePointerDown(e, rowIndex, colIndex)}
+                    onKeyDown={(e) => handleTileKeyDown(e, rowIndex, colIndex)}
                     disabled={disabled}
                     role="gridcell"
-                    aria-label={`${letter}${selected ? ', selected' : ''}${highlighted ? ', highlighted' : ''}`}
+                    aria-selected={selected}
+                    aria-label={`${letter}, row ${rowIndex + 1}, column ${colIndex + 1}${selected ? ', selected' : ''}${highlighted ? ', highlighted' : ''}`}
                   >
                     <span className="boggle-tile__letter">{letter}</span>
                     {selected && (
@@ -194,6 +237,19 @@ export const BoggleBoard = memo(function BoggleBoard({
               })}
             </div>
           ))}
+        </div>
+        <div className="boggle-selection-actions">
+          <button type="button" onClick={onClear} disabled={disabled || !currentWord}>
+            Clear
+          </button>
+          <button
+            type="button"
+            className="boggle-submit-word"
+            onClick={onSubmit}
+            disabled={disabled || currentWord.length < 3}
+          >
+            Submit word
+          </button>
         </div>
       </div>
     </div>

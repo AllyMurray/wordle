@@ -1,16 +1,18 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useWordleStore } from './store';
 import { WordleBoard, WordleKeyboard } from './components';
 import { GameLayout } from '../../components/GameLayout/GameLayout';
 import Lobby from '../../components/Lobby';
 import Stats from '../../components/Stats';
 import ErrorBoundary from '../../components/ErrorBoundary';
+import ScreenReaderAnnouncement from '../../components/ScreenReaderAnnouncement';
+import { ConnectionAlert } from '../../components/ConnectionAlert';
 import { useGameSession } from '../../hooks/useGameSession';
-import { useStatsStore, useUIStore } from '../../stores';
+import { useGameAnnouncements } from '../../hooks/useGameAnnouncements';
+import { useStatsStore } from '../../stores/statsStore';
+import { useUIStore } from '../../stores/uiStore';
 import { getJoinCodeFromUrl, generateShareUrl, generateWhatsAppUrl } from '../../utils/shareUrl';
 import { useGameRouteCleanup } from '../../hooks/useGameRouteCleanup';
-import { useWindowKeyDown } from '../../hooks/useWindowKeyDown';
 import './WordleGame.css';
 
 export default function WordleGame() {
@@ -47,19 +49,7 @@ export default function WordleGame() {
     handleAcceptSuggestion,
     handleRejectSuggestion,
   } = useGameSession('wordle');
-
-  // Also use the new Wordle store for solo mode keyboard status
-  const wordleStoreGuesses = useWordleStore((s) => s.guesses);
-  const wordleStoreCurrentGuess = useWordleStore((s) => s.currentGuess);
-  const wordleStoreGameOver = useWordleStore((s) => s.gameOver);
-  const wordleStoreWon = useWordleStore((s) => s.won);
-  const wordleStoreShake = useWordleStore((s) => s.shake);
-  const wordleStoreMessage = useWordleStore((s) => s.message);
-  const wordleStoreAddLetter = useWordleStore((s) => s.addLetter);
-  const wordleStoreRemoveLetter = useWordleStore((s) => s.removeLetter);
-  const wordleStoreSubmitGuess = useWordleStore((s) => s.submitGuess);
-  const wordleStoreResetGame = useWordleStore((s) => s.resetGame);
-  const wordleStoreGetKeyboardStatus = useWordleStore((s) => s.getKeyboardStatus);
+  const announcement = useGameAnnouncements({ guesses, gameOver, won, shake, message });
 
   // Stats from store
   const stats = useStatsStore((s) => s.stats);
@@ -77,57 +67,32 @@ export default function WordleGame() {
   const maxDistributionValue = Math.max(...stats.guessDistribution, 1);
 
   // Track game completion and record stats
-  const effectiveGameOver = gameMode === 'solo' ? wordleStoreGameOver : gameOver;
-  const effectiveWon = gameMode === 'solo' ? wordleStoreWon : won;
-  const effectiveGuesses = gameMode === 'solo' ? wordleStoreGuesses : guesses;
-
-  const gameIdentifier = effectiveGameOver ? `${effectiveGuesses.length}-${effectiveWon}` : null;
+  const gameIdentifier = gameOver ? `${guesses.length}-${won}` : null;
   const lastRecordedGameRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (
-      effectiveGameOver &&
+      gameOver &&
       gameMode &&
       !isViewer &&
       gameIdentifier !== null &&
       lastRecordedGameRef.current !== gameIdentifier
     ) {
       lastRecordedGameRef.current = gameIdentifier;
-      recordGame(effectiveWon, effectiveGuesses.length, gameMode === 'solo' ? 'solo' : 'multiplayer');
+      recordGame(won, guesses.length, gameMode === 'solo' ? 'solo' : 'multiplayer');
       openStats();
     }
 
-    if (!effectiveGameOver && lastRecordedGameRef.current !== null) {
+    if (!gameOver && lastRecordedGameRef.current !== null) {
       lastRecordedGameRef.current = null;
     }
-  }, [effectiveGameOver, gameMode, isViewer, effectiveWon, effectiveGuesses.length, recordGame, openStats, gameIdentifier]);
-
-  const handleSoloKeyDown = useCallback((e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        wordleStoreSubmitGuess();
-      } else if (e.key === 'Backspace') {
-        e.preventDefault();
-        wordleStoreRemoveLetter();
-      } else if (/^[a-zA-Z]$/.test(e.key)) {
-        wordleStoreAddLetter(e.key);
-      }
-  }, [wordleStoreAddLetter, wordleStoreRemoveLetter, wordleStoreSubmitGuess]);
-
-  // Keep the game inert while the modal owns keyboard focus.
-  useWindowKeyDown(gameMode === 'solo' && !isStatsOpen, handleSoloKeyDown);
+  }, [gameOver, gameMode, isViewer, won, guesses.length, recordGame, openStats, gameIdentifier]);
 
   const handleBackToLobby = useCallback(() => {
     handleLeave();
   }, [handleLeave]);
 
   useGameRouteCleanup(handleLeave);
-
-  const handleSoloNewGame = useCallback(() => {
-    wordleStoreResetGame();
-  }, [wordleStoreResetGame]);
 
   // Handle copy link to clipboard
   const handleCopyLink = useCallback((): void => {
@@ -166,69 +131,6 @@ export default function WordleGame() {
     );
   }
 
-  // Solo mode - use the new Wordle store
-  if (gameMode === 'solo') {
-    return (
-      <GameLayout
-        gameId="wordle"
-        gameName="Wordle"
-        onBack={handleBackToLobby}
-        headerActions={
-          <button
-            className="stats-btn"
-            onClick={openStats}
-            aria-label="View statistics"
-          >
-            Stats
-          </button>
-        }
-      >
-        <div className="wordle-game">
-          {wordleStoreMessage && (
-            <div className={`game-message ${wordleStoreWon ? 'game-message--won' : ''}`}>
-              {wordleStoreMessage}
-            </div>
-          )}
-
-          <WordleBoard
-            guesses={wordleStoreGuesses}
-            currentGuess={wordleStoreCurrentGuess}
-            shake={wordleStoreShake}
-          />
-
-          {wordleStoreGameOver && (
-            <button className="play-again-btn" onClick={handleSoloNewGame}>
-              Play Again
-            </button>
-          )}
-
-          <WordleKeyboard
-            keyboardStatus={wordleStoreGetKeyboardStatus()}
-            onKey={wordleStoreAddLetter}
-            onEnter={wordleStoreSubmitGuess}
-            onBackspace={wordleStoreRemoveLetter}
-            disabled={wordleStoreGameOver}
-          />
-        </div>
-
-        <ErrorBoundary
-          compact
-          message="Unable to display statistics. Try closing and reopening."
-        >
-          <Stats
-            stats={stats}
-            winPercentage={winPercentage}
-            maxDistributionValue={maxDistributionValue}
-            isOpen={isStatsOpen}
-            onClose={closeStats}
-            lastGuessCount={wordleStoreWon && wordleStoreGameOver ? wordleStoreGuesses.length : undefined}
-          />
-        </ErrorBoundary>
-      </GameLayout>
-    );
-  }
-
-  // Multiplayer mode - use the game session hook
   return (
     <GameLayout
       gameId="wordle"
@@ -245,74 +147,86 @@ export default function WordleGame() {
       }
     >
       <div className="wordle-game">
-        {/* Connection status for multiplayer */}
-        <ErrorBoundary
-          compact
-          message="Connection status unavailable. The game may still work."
-        >
-          <div className="connection-status">
-            {isHost && (
-              <div className="session-info">
-                <span className="session-label">Share code:</span>
-                <span className="session-code">{sessionCode}</span>
-                {sessionPin && (
-                  <span className="session-pin-indicator" title={`PIN: ${sessionPin}`}>
-                    🔒
-                  </span>
-                )}
-                <div className="share-buttons">
-                  <button
-                    className="share-btn copy"
-                    onClick={handleCopyLink}
-                    aria-label="Copy game link to clipboard"
-                    title="Copy link"
-                  >
-                    {copyFeedback ? 'Copied!' : 'Copy Link'}
-                  </button>
-                  <button
-                    className="share-btn whatsapp"
-                    onClick={handleWhatsAppShare}
-                    aria-label="Share game link via WhatsApp"
-                    title="Share on WhatsApp"
-                  >
-                    WhatsApp
-                  </button>
+        <ScreenReaderAnnouncement
+          message={announcement}
+          priority={shake || gameOver ? 'assertive' : 'polite'}
+        />
+        {gameMode === 'multiplayer' && (
+          <ErrorBoundary
+            compact
+            message="Connection status unavailable. The game may still work."
+          >
+            <div className="connection-status">
+              {isHost && (
+                <div className="session-info">
+                  {sessionCode ? (
+                    <>
+                      <span className="session-label">Share code:</span>
+                      <span className="session-code">{sessionCode}</span>
+                      {sessionPin && (
+                        <span className="session-pin-indicator" title={`PIN: ${sessionPin}`}>
+                          🔒
+                        </span>
+                      )}
+                      <div className="share-buttons">
+                        <button
+                          className="share-btn copy"
+                          onClick={handleCopyLink}
+                          aria-label="Copy game link to clipboard"
+                          title="Copy link"
+                        >
+                          {copyFeedback ? 'Copied!' : 'Copy Link'}
+                        </button>
+                        <button
+                          className="share-btn whatsapp"
+                          onClick={handleWhatsAppShare}
+                          aria-label="Share game link via WhatsApp"
+                          title="Share on WhatsApp"
+                        >
+                          WhatsApp
+                        </button>
+                      </div>
+                    </>
+                  ) : connectionStatus !== 'error' ? (
+                    <span className="partner-status waiting">Creating session...</span>
+                  ) : null}
+                  <ConnectionAlert status={connectionStatus} message={errorMessage} />
+                  {connectionStatus !== 'error' &&
+                    sessionCode &&
+                    (partnerConnected ? (
+                      <span className="partner-status connected">Partner connected</span>
+                    ) : (
+                      <span className="partner-status waiting">Waiting for partner...</span>
+                    ))}
                 </div>
-                {partnerConnected ? (
-                  <span className="partner-status connected">Partner connected</span>
-                ) : (
-                  <span className="partner-status waiting">Waiting for partner...</span>
-                )}
-              </div>
-            )}
-            {isViewer && (
-              <div className="session-info">
-                <span className="viewer-label">Playing with partner</span>
-                {connectionStatus === 'connecting' && (
-                  <span className="partner-status waiting">Connecting...</span>
-                )}
-                {connectionStatus === 'connected' && !suggestionStatus && (
-                  <span className="partner-status connected">Type a word to suggest</span>
-                )}
-                {suggestionStatus === 'pending' && (
-                  <span className="partner-status waiting">Waiting for host...</span>
-                )}
-                {suggestionStatus === 'accepted' && (
-                  <span className="partner-status connected">Suggestion accepted!</span>
-                )}
-                {suggestionStatus === 'rejected' && (
-                  <span className="partner-status error">Suggestion rejected</span>
-                )}
-                {suggestionStatus === 'invalid' && (
-                  <span className="partner-status error">Not in word list</span>
-                )}
-                {connectionStatus === 'error' && (
-                  <span className="partner-status error">{errorMessage}</span>
-                )}
-              </div>
-            )}
-          </div>
-        </ErrorBoundary>
+              )}
+              {isViewer && (
+                <div className="session-info">
+                  <span className="viewer-label">Playing with partner</span>
+                  {connectionStatus === 'connecting' && (
+                    <span className="partner-status waiting">Connecting...</span>
+                  )}
+                  {connectionStatus === 'connected' && !suggestionStatus && (
+                    <span className="partner-status connected">Type a word to suggest</span>
+                  )}
+                  {suggestionStatus === 'pending' && (
+                    <span className="partner-status waiting">Waiting for host...</span>
+                  )}
+                  {suggestionStatus === 'accepted' && (
+                    <span className="partner-status connected">Suggestion accepted!</span>
+                  )}
+                  {suggestionStatus === 'rejected' && (
+                    <span className="partner-status error">Suggestion rejected</span>
+                  )}
+                  {suggestionStatus === 'invalid' && (
+                    <span className="partner-status error">Not in word list</span>
+                  )}
+                  <ConnectionAlert status={connectionStatus} message={errorMessage} />
+                </div>
+              )}
+            </div>
+          </ErrorBoundary>
+        )}
 
         {message && (
           <div className={`game-message ${won ? 'game-message--won' : ''}`}>

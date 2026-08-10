@@ -35,8 +35,7 @@ const formatGuessAnnouncement = (guess: Guess): string => {
  * Hook that generates screen reader announcements based on game events.
  * Returns the current announcement message to be used with a live region.
  *
- * This uses a simple approach: compute announcement from current state.
- * The ScreenReaderAnnouncement component handles deduplication.
+ * This uses a simple approach: compute the announcement from current state.
  */
 export const useGameAnnouncements = ({
   guesses,
@@ -49,7 +48,7 @@ export const useGameAnnouncements = ({
 
   // Invalid word shake
   if (shake) {
-    return 'Not in word list';
+    return message || 'Invalid guess';
   }
 
   // Game over announcement

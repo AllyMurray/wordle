@@ -16,6 +16,7 @@ import type {
   GameState,
   ViewerGameState,
   BoggleMultiplayerState,
+  BoggleWordResult,
 } from '../types';
 import {
   validatePeerMessage,
@@ -66,7 +67,7 @@ export const generateSessionCode = (): string => {
 };
 
 // Message with ID for acknowledgment tracking
-export interface PendingMessage {
+interface PendingMessage {
   id: string;
   message: PeerMessage;
   retries: number;
@@ -89,6 +90,7 @@ export interface InternalConnectionState {
   receivedMessageIds: Set<string>;
   heartbeatInterval: ReturnType<typeof setInterval> | null;
   heartbeatTimeout: ReturnType<typeof setTimeout> | null;
+  connectionDeadline: ReturnType<typeof setTimeout> | null;
   reconnectTimeout: ReturnType<typeof setTimeout> | null;
   reconnectAttempts: number;
   lastSessionCode: string;
@@ -98,12 +100,17 @@ export interface InternalConnectionState {
   isAuthenticated: boolean;
   lastHeartbeat: number;
   currentGameId: string;
+  wordleStateRevision: number;
+  boggleStateRevision: number;
+  lastReceivedWordleRevision: number;
+  lastReceivedBoggleRevision: number;
   // Callbacks for game state updates (set by useGameSession)
   onGameStateReceived: ((state: ViewerGameState) => void) | null;
   onSuggestionResponse: ((accepted: boolean) => void) | null;
   onStateRequested: (() => void) | null;
   onBoggleStateReceived: ((state: BoggleMultiplayerState) => void) | null;
-  onBoggleWordReceived: ((word: string) => void) | null;
+  onBoggleWordReceived: ((word: string) => BoggleWordResult) | null;
+  onBoggleWordResultReceived: ((result: BoggleWordResult) => void) | null;
 }
 
 export const createInternalState = (): InternalConnectionState => ({
@@ -114,6 +121,7 @@ export const createInternalState = (): InternalConnectionState => ({
   receivedMessageIds: new Set(),
   heartbeatInterval: null,
   heartbeatTimeout: null,
+  connectionDeadline: null,
   reconnectTimeout: null,
   reconnectAttempts: 0,
   lastSessionCode: '',
@@ -123,11 +131,16 @@ export const createInternalState = (): InternalConnectionState => ({
   isAuthenticated: false,
   lastHeartbeat: 0,
   currentGameId: '',
+  wordleStateRevision: 0,
+  boggleStateRevision: 0,
+  lastReceivedWordleRevision: -1,
+  lastReceivedBoggleRevision: -1,
   onGameStateReceived: null,
   onSuggestionResponse: null,
   onStateRequested: null,
   onBoggleStateReceived: null,
   onBoggleWordReceived: null,
+  onBoggleWordResultReceived: null,
 });
 
 // Helper functions
@@ -155,6 +168,24 @@ export const clearReconnectTimeout = (internal: InternalConnectionState): void =
   internal.isReconnecting = false;
 };
 
+export const clearConnectionDeadline = (internal: InternalConnectionState): void => {
+  if (internal.connectionDeadline) {
+    clearTimeout(internal.connectionDeadline);
+    internal.connectionDeadline = null;
+  }
+};
+
+export const startConnectionDeadline = (
+  internal: InternalConnectionState,
+  onTimeout: () => void
+): void => {
+  clearConnectionDeadline(internal);
+  internal.connectionDeadline = setTimeout(() => {
+    internal.connectionDeadline = null;
+    onTimeout();
+  }, NETWORK_CONFIG.CONNECTION_SETUP_TIMEOUT_MS);
+};
+
 export const cleanup = (internal: InternalConnectionState): void => {
   // Invalidate pending dynamic imports, PeerJS callbacks, and delayed retries
   // before closing the current transport.
@@ -163,6 +194,7 @@ export const cleanup = (internal: InternalConnectionState): void => {
   internal.receivedMessageIds.clear();
   stopHeartbeat(internal);
   clearReconnectTimeout(internal);
+  clearConnectionDeadline(internal);
 
   try {
     if (internal.connection) {
@@ -339,17 +371,6 @@ export const startHeartbeat = (
       }
     }
   }, NETWORK_CONFIG.HEARTBEAT_INTERVAL_MS);
-};
-
-/**
- * Create a Peer instance with the given ID.
- * This function uses the lazy-loaded PeerJS class.
- */
-export const createPeer = async (
-  peerId: string
-): Promise<InstanceType<typeof import('peerjs').default>> => {
-  const Peer = await loadPeerJS();
-  return new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
 };
 
 /**

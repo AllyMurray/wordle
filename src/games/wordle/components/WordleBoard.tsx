@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { Guess } from '../types';
+import type { Guess } from '../../../types';
 import './WordleBoard.css';
 
 interface WordleBoardProps {

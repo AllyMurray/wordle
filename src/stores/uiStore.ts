@@ -26,9 +26,14 @@ interface UIState {
 /**
  * Gets the initial theme from localStorage or system preference.
  */
-function getInitialTheme(): Theme {
+export function getInitialTheme(): Theme {
   // Check localStorage first
-  const stored = localStorage.getItem('wordle-theme');
+  let stored: string | null = null;
+  try {
+    stored = typeof localStorage === 'undefined' ? null : localStorage.getItem('wordle-theme');
+  } catch {
+    // Storage may be unavailable in private browsing or blocked contexts.
+  }
   if (stored === 'dark' || stored === 'light') {
     return stored;
   }
@@ -46,9 +51,17 @@ function getInitialTheme(): Theme {
 /**
  * Applies theme to the document root element.
  */
-function applyTheme(theme: Theme): void {
-  document.documentElement.setAttribute('data-theme', theme);
-  localStorage.setItem('wordle-theme', theme);
+export function applyTheme(theme: Theme): void {
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', theme);
+  }
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('wordle-theme', theme);
+    }
+  } catch {
+    // Applying the in-memory/document theme should still succeed without storage.
+  }
 }
 
 /**
@@ -87,9 +100,5 @@ export const useUIStore = create<UIState>((set, get) => ({
 // Apply initial theme on load
 applyTheme(useUIStore.getState().theme);
 
-// Selector hooks
-export const useGameMode = () => useUIStore((state) => state.gameMode);
-export const useSuggestionStatus = () => useUIStore((state) => state.suggestionStatus);
-export const useIsStatsOpen = () => useUIStore((state) => state.isStatsOpen);
 export const useTheme = () => useUIStore((state) => state.theme);
 export const useToggleTheme = () => useUIStore((state) => state.toggleTheme);

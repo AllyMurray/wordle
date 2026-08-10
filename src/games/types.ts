@@ -5,7 +5,7 @@
  * but implement their own game logic. No forced interface for game mechanics.
  */
 
-export type GameId = 'wordle' | 'boggle';
+type GameId = 'wordle' | 'boggle';
 
 /**
  * Metadata for dashboard display. No game logic here.

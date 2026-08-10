@@ -8,6 +8,7 @@ import type {
   ViewerGameState,
   PeerMessage,
   BoggleMultiplayerState,
+  BoggleWordResult,
 } from '../types';
 import {
   NETWORK_CONFIG,
@@ -26,6 +27,8 @@ import {
   clearPendingMessages,
   stopHeartbeat,
   clearReconnectTimeout,
+  clearConnectionDeadline,
+  startConnectionDeadline,
   getReconnectDelay,
   sendWithAck,
   handleAck,
@@ -165,9 +168,12 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       const sanitizedPin = pin ? sanitizeSessionPin(pin) : '';
       internal.sessionPinInternal = sanitizedPin;
       internal.currentGameId = gameId;
+      internal.wordleStateRevision = 0;
+      internal.boggleStateRevision = 0;
 
       set({
         role: 'host',
+        sessionCode: '',
         connectionStatus: 'connecting',
         errorMessage: '',
         sessionPin: sanitizedPin,
@@ -179,6 +185,18 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       const code = generateSessionCode();
       const peerId = `${gameId}-${code}`;
 
+      startConnectionDeadline(internal, () => {
+        if (internal.connectionGeneration !== connectionGeneration) return;
+        cleanup(internal);
+        set({
+          connectionStatus: 'error',
+          errorMessage: 'Creating the game timed out. Check your connection and try again.',
+          sessionCode: '',
+          partnerConnected: false,
+          pendingSuggestion: null,
+        });
+      });
+
       // Load PeerJS dynamically
       loadPeerJS()
         .then((Peer) => {
@@ -188,6 +206,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           try {
             peer = new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
           } catch (err) {
+            clearConnectionDeadline(internal);
             console.error('Error creating peer:', err);
             set({
               connectionStatus: 'error',
@@ -198,6 +217,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
           peer.on('open', () => {
             if (internal.connectionGeneration !== connectionGeneration) return;
+            clearConnectionDeadline(internal);
             set({ sessionCode: code, connectionStatus: 'connected' });
           });
 
@@ -315,6 +335,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               if (
                 messageId &&
                 (message.type === 'suggest-word' ||
+                  message.type === 'clear-suggestion' ||
                   message.type === 'request-state' ||
                   message.type === 'boggle-word')
               ) {
@@ -328,7 +349,18 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               } else if (message.type === 'clear-suggestion') {
                 set({ pendingSuggestion: null });
               } else if (message.type === 'boggle-word' && internal.onBoggleWordReceived) {
-                internal.onBoggleWordReceived(message.word);
+                const result = internal.onBoggleWordReceived(message.word);
+                sendWithAck(
+                  internal,
+                  conn,
+                  {
+                    type: 'boggle-word-result',
+                    word: result.word,
+                    accepted: result.accepted,
+                    ...(result.reason ? { reason: result.reason } : {}),
+                  } as PeerMessage,
+                  true
+                );
               }
             });
 
@@ -351,6 +383,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
           peer.on('error', (err) => {
             if (internal.connectionGeneration !== connectionGeneration) return;
+            clearConnectionDeadline(internal);
             console.error('Peer error:', err);
             if (err.type === 'unavailable-id') {
               set({ connectionStatus: 'disconnected' });
@@ -371,6 +404,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
         })
         .catch((err) => {
           if (internal.connectionGeneration !== connectionGeneration) return;
+          clearConnectionDeadline(internal);
           console.error('Failed to load PeerJS:', err);
           set({
             connectionStatus: 'error',
@@ -406,9 +440,12 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
       stopHeartbeat(internal);
       clearPendingMessages(internal);
+      clearConnectionDeadline(internal);
 
       if (!isReconnect) {
         internal.reconnectAttempts = 0;
+        internal.lastReceivedWordleRevision = -1;
+        internal.lastReceivedBoggleRevision = -1;
         internal.viewerPinInternal = pin;
         internal.currentGameId = gameId;
         set({
@@ -426,6 +463,18 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       const peerId = `${gameId}-viewer-${Date.now()}`;
       const hostPeerId = `${gameId}-${code}`;
 
+      startConnectionDeadline(internal, () => {
+        if (internal.connectionGeneration !== connectionGeneration) return;
+        cleanup(internal);
+        set({
+          connectionStatus: 'error',
+          errorMessage: isReconnect
+            ? 'Reconnecting timed out. The game session may have ended.'
+            : 'Connecting timed out. Check the game code and try again.',
+          partnerConnected: false,
+        });
+      });
+
       // Load PeerJS dynamically
       loadPeerJS()
         .then((Peer) => {
@@ -435,6 +484,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           try {
             peer = new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
           } catch (err) {
+            clearConnectionDeadline(internal);
             console.error('Error creating peer:', err);
             set({
               connectionStatus: 'error',
@@ -444,6 +494,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           }
 
           const onHeartbeatTimeout = (): void => {
+            clearConnectionDeadline(internal);
             if (internal.reconnectAttempts < NETWORK_CONFIG.MAX_RECONNECT_ATTEMPTS) {
               internal.isReconnecting = true;
               internal.reconnectAttempts++;
@@ -475,6 +526,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             try {
               conn = peer.connect(hostPeerId, { reliable: true });
             } catch (err) {
+              clearConnectionDeadline(internal);
               console.error('Error connecting to host:', err);
               set({
                 connectionStatus: 'error',
@@ -493,6 +545,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               try {
                 conn.send({ type: 'auth-request', pin: internal.viewerPinInternal } as PeerMessage);
               } catch (err) {
+                clearConnectionDeadline(internal);
                 console.warn('Error sending auth request:', err);
                 set({
                   connectionStatus: 'error',
@@ -519,6 +572,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               }
 
               if (message.type === 'auth-success') {
+                clearConnectionDeadline(internal);
                 internal.isAuthenticated = true;
                 internal.reconnectAttempts = 0;
                 set({
@@ -539,13 +593,16 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               }
 
               if (message.type === 'auth-failure') {
+                clearConnectionDeadline(internal);
                 internal.isAuthenticated = false;
                 internal.isReconnecting = false;
                 internal.reconnectAttempts = NETWORK_CONFIG.MAX_RECONNECT_ATTEMPTS;
                 set({
                   connectionStatus: 'error',
                   errorMessage: message.reason || 'Authentication failed',
+                  partnerConnected: false,
                 });
+                conn.close();
                 return;
               }
 
@@ -573,6 +630,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 messageId &&
                 (message.type === 'game-state' ||
                   message.type === 'boggle-state' ||
+                  message.type === 'boggle-word-result' ||
                   message.type === 'suggestion-accepted' ||
                   message.type === 'suggestion-rejected')
               ) {
@@ -580,9 +638,22 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               }
 
               if (message.type === 'game-state' && internal.onGameStateReceived) {
+                if (message.revision <= internal.lastReceivedWordleRevision) return;
+                internal.lastReceivedWordleRevision = message.revision;
                 internal.onGameStateReceived(message.state);
               } else if (message.type === 'boggle-state' && internal.onBoggleStateReceived) {
+                if (message.revision <= internal.lastReceivedBoggleRevision) return;
+                internal.lastReceivedBoggleRevision = message.revision;
                 internal.onBoggleStateReceived(message.state);
+              } else if (
+                message.type === 'boggle-word-result' &&
+                internal.onBoggleWordResultReceived
+              ) {
+                internal.onBoggleWordResultReceived({
+                  word: message.word,
+                  accepted: message.accepted,
+                  ...(message.reason ? { reason: message.reason } : {}),
+                });
               } else if (
                 (message.type === 'suggestion-accepted' || message.type === 'suggestion-rejected') &&
                 internal.onSuggestionResponse
@@ -610,6 +681,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
           peer.on('error', (err) => {
             if (internal.connectionGeneration !== connectionGeneration) return;
+            clearConnectionDeadline(internal);
             console.error('Peer error:', err);
             if (err.type === 'peer-unavailable') {
               if (isReconnect && internal.reconnectAttempts < NETWORK_CONFIG.MAX_RECONNECT_ATTEMPTS) {
@@ -651,6 +723,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
         })
         .catch((err) => {
           if (internal.connectionGeneration !== connectionGeneration) return;
+          clearConnectionDeadline(internal);
           console.error('Failed to load PeerJS:', err);
           set({
             connectionStatus: 'error',
@@ -726,8 +799,14 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
       leaveSession: () => {
         cleanup(internal);
+        internal.lastSessionCode = '';
+        internal.currentGameId = '';
         internal.sessionPinInternal = '';
         internal.viewerPinInternal = '';
+        internal.wordleStateRevision = 0;
+        internal.boggleStateRevision = 0;
+        internal.lastReceivedWordleRevision = -1;
+        internal.lastReceivedBoggleRevision = -1;
         // Reset rate limiting state when leaving session
         resetRateLimitState(rateLimitState);
         set({
@@ -738,6 +817,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           errorMessage: '',
           partnerConnected: false,
           pendingSuggestion: null,
+          currentGameId: '',
         });
       },
 
@@ -748,7 +828,11 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           sendWithAck(
             internal,
             internal.connection,
-            { type: 'game-state', state: viewerState } as PeerMessage,
+            {
+              type: 'game-state',
+              revision: ++internal.wordleStateRevision,
+              state: viewerState,
+            } as PeerMessage,
             true
           );
         }
@@ -772,7 +856,11 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           sendWithAck(
             internal,
             internal.connection,
-            { type: 'boggle-state', state } as PeerMessage,
+            {
+              type: 'boggle-state',
+              revision: ++internal.boggleStateRevision,
+              state,
+            } as PeerMessage,
             true
           );
         }
@@ -793,11 +881,12 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       clearSuggestion: () => {
         const { role } = get();
         if (role === 'viewer' && internal.connection?.open) {
-          try {
-            internal.connection.send({ type: 'clear-suggestion' } as PeerMessage);
-          } catch (err) {
-            console.warn('Error clearing suggestion:', err);
-          }
+          sendWithAck(
+            internal,
+            internal.connection,
+            { type: 'clear-suggestion' } as PeerMessage,
+            true
+          );
         }
       },
 
@@ -869,6 +958,17 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
         set({ connectionStatus: 'connecting' });
 
+        startConnectionDeadline(internal, () => {
+          if (internal.connectionGeneration !== connectionGeneration) return;
+          cleanup(internal);
+          set({
+            connectionStatus: 'error',
+            errorMessage: 'Restoring the game timed out. Check your connection and try again.',
+            partnerConnected: false,
+            pendingSuggestion: null,
+          });
+        });
+
         loadPeerJS()
           .then((Peer) => {
             if (internal.connectionGeneration !== connectionGeneration) return;
@@ -877,6 +977,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             try {
               peer = new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
             } catch (err) {
+              clearConnectionDeadline(internal);
               console.error('Error creating peer during restore:', err);
               set({
                 connectionStatus: 'error',
@@ -887,6 +988,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
             peer.on('open', () => {
               if (internal.connectionGeneration !== connectionGeneration) return;
+              clearConnectionDeadline(internal);
               set({ connectionStatus: 'connected' });
             });
 
@@ -1000,6 +1102,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 if (
                   messageId &&
                   (message.type === 'suggest-word' ||
+                    message.type === 'clear-suggestion' ||
                     message.type === 'request-state' ||
                     message.type === 'boggle-word')
                 ) {
@@ -1013,7 +1116,18 @@ export const useMultiplayerStore = create<MultiplayerState>()(
                 } else if (message.type === 'clear-suggestion') {
                   set({ pendingSuggestion: null });
                 } else if (message.type === 'boggle-word' && internal.onBoggleWordReceived) {
-                  internal.onBoggleWordReceived(message.word);
+                  const result = internal.onBoggleWordReceived(message.word);
+                  sendWithAck(
+                    internal,
+                    conn,
+                    {
+                      type: 'boggle-word-result',
+                      word: result.word,
+                      accepted: result.accepted,
+                      ...(result.reason ? { reason: result.reason } : {}),
+                    } as PeerMessage,
+                    true
+                  );
                 }
               });
 
@@ -1036,6 +1150,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
             peer.on('error', (err) => {
               if (internal.connectionGeneration !== connectionGeneration) return;
+              clearConnectionDeadline(internal);
               console.error('Peer error during restore:', err);
               if (err.type === 'unavailable-id') {
                 // Session code is already in use (somehow), retry after delay
@@ -1057,6 +1172,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           })
           .catch((err) => {
             if (internal.connectionGeneration !== connectionGeneration) return;
+            clearConnectionDeadline(internal);
             console.error('Failed to load PeerJS during restore:', err);
             set({
               connectionStatus: 'error',
@@ -1149,8 +1265,16 @@ export const registerBoggleStateCallback = (
   internal.onBoggleStateReceived = callback;
 };
 
-export const registerBoggleWordCallback = (callback: ((word: string) => void) | null): void => {
+export const registerBoggleWordCallback = (
+  callback: ((word: string) => BoggleWordResult) | null
+): void => {
   internal.onBoggleWordReceived = callback;
+};
+
+export const registerBoggleWordResultCallback = (
+  callback: ((result: BoggleWordResult) => void) | null
+): void => {
+  internal.onBoggleWordResultReceived = callback;
 };
 
 // Selector hooks for fine-grained subscriptions

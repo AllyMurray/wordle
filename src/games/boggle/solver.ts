@@ -55,10 +55,6 @@ export function validateWord(
   board: BoggleBoard,
   path: Position[]
 ): { valid: boolean; word: string; reason?: string } {
-  if (path.length < 3) {
-    return { valid: false, word: '', reason: 'Word must be at least 3 letters' };
-  }
-
   if (!isValidPath(path)) {
     return { valid: false, word: '', reason: 'Invalid path' };
   }

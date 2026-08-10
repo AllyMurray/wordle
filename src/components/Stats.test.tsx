@@ -231,6 +231,30 @@ describe('Stats', () => {
       const closeButton = screen.getByRole('button', { name: 'Close statistics' });
       expect(closeButton).toBeInTheDocument();
     });
+
+    it('moves focus into the dialog and restores it after closing', () => {
+      const trigger = document.createElement('button');
+      document.body.append(trigger);
+      trigger.focus();
+
+      const { rerender } = render(<Stats {...defaultProps} />);
+      expect(screen.getByRole('button', { name: 'Close statistics' })).toHaveFocus();
+
+      rerender(<Stats {...defaultProps} isOpen={false} />);
+      expect(trigger).toHaveFocus();
+      trigger.remove();
+    });
+
+    it('keeps keyboard focus inside the open dialog', () => {
+      render(<Stats {...defaultProps} />);
+      const closeButton = screen.getByRole('button', { name: 'Close statistics' });
+
+      fireEvent.keyDown(closeButton, { key: 'Tab' });
+      expect(closeButton).toHaveFocus();
+
+      fireEvent.keyDown(closeButton, { key: 'Tab', shiftKey: true });
+      expect(closeButton).toHaveFocus();
+    });
   });
 
   describe('edge cases', () => {

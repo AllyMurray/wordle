@@ -218,6 +218,7 @@ export const NETWORK_CONFIG = {
   // Heartbeat settings
   HEARTBEAT_INTERVAL_MS: 5000,
   HEARTBEAT_TIMEOUT_MS: 15000,
+  CONNECTION_SETUP_TIMEOUT_MS: 15000,
 
   // Message acknowledgment settings
   ACK_TIMEOUT_MS: 5000,
@@ -278,6 +279,12 @@ export interface BoggleMultiplayerState {
   timedMode: boolean;
 }
 
+export interface BoggleWordResult {
+  word: string;
+  accepted: boolean;
+  reason?: string;
+}
+
 // Keyboard status map (letter -> status)
 export type KeyboardStatus = Record<string, LetterStatus>;
 
@@ -304,111 +311,141 @@ export type SuggestionStatus = null | 'pending' | 'accepted' | 'rejected' | 'inv
 
 // Schema for letter status
 const LetterStatusSchema = z.enum(['correct', 'present', 'absent']);
+const MessageMetadataShape = {
+  _messageId: z.string().min(1).max(128).optional(),
+};
+const WordleWordSchema = z.string().regex(/^[A-Z]{5}$/);
+const BoggleWordSchema = z.string().regex(/^[A-Z]{3,17}$/);
 
 // Schema for a guess
-const GuessSchema = z.object({
-  word: z.string(),
-  status: z.array(LetterStatusSchema),
+const GuessSchema = z.strictObject({
+  word: WordleWordSchema,
+  status: z.array(LetterStatusSchema).length(GAME_CONFIG.WORD_LENGTH),
 });
 
 // Schema for viewer game state (solution hidden for security)
-const ViewerGameStateSchema = z.object({
-  guesses: z.array(GuessSchema),
-  currentGuess: z.string(),
+const ViewerGameStateSchema = z.strictObject({
+  guesses: z.array(GuessSchema).max(GAME_CONFIG.MAX_GUESSES),
+  currentGuess: z.string().regex(/^[A-Z]{0,5}$/),
   gameOver: z.boolean(),
   won: z.boolean(),
-  message: z.string(),
+  message: z.string().max(200),
 });
 
 // Schema for request-state message
-const RequestStateMessageSchema = z.object({
+const RequestStateMessageSchema = z.strictObject({
   type: z.literal('request-state'),
+  ...MessageMetadataShape,
 });
 
 // Schema for game-state message (sent to viewer, solution hidden)
-const GameStateMessageSchema = z.object({
+const GameStateMessageSchema = z.strictObject({
   type: z.literal('game-state'),
+  revision: z.number().int().nonnegative().safe(),
   state: ViewerGameStateSchema,
+  ...MessageMetadataShape,
 });
 
 // Schema for suggest-word message
-const SuggestWordMessageSchema = z.object({
+const SuggestWordMessageSchema = z.strictObject({
   type: z.literal('suggest-word'),
-  word: z.string(),
+  word: WordleWordSchema,
+  ...MessageMetadataShape,
 });
 
 // Schema for clear-suggestion message
-const ClearSuggestionMessageSchema = z.object({
+const ClearSuggestionMessageSchema = z.strictObject({
   type: z.literal('clear-suggestion'),
+  ...MessageMetadataShape,
 });
 
 // Schema for suggestion-accepted message
-const SuggestionAcceptedMessageSchema = z.object({
+const SuggestionAcceptedMessageSchema = z.strictObject({
   type: z.literal('suggestion-accepted'),
+  ...MessageMetadataShape,
 });
 
 // Schema for suggestion-rejected message
-const SuggestionRejectedMessageSchema = z.object({
+const SuggestionRejectedMessageSchema = z.strictObject({
   type: z.literal('suggestion-rejected'),
+  ...MessageMetadataShape,
 });
 
 // Schema for message acknowledgment
-const AckMessageSchema = z.object({
+const AckMessageSchema = z.strictObject({
   type: z.literal('ack'),
-  messageId: z.string(),
+  messageId: z.string().min(1).max(128),
+  ...MessageMetadataShape,
 });
 
 // Schema for heartbeat ping
-const PingMessageSchema = z.object({
+const PingMessageSchema = z.strictObject({
   type: z.literal('ping'),
-  timestamp: z.number(),
+  timestamp: z.number().int().nonnegative().finite(),
+  ...MessageMetadataShape,
 });
 
 // Schema for heartbeat pong
-const PongMessageSchema = z.object({
+const PongMessageSchema = z.strictObject({
   type: z.literal('pong'),
-  timestamp: z.number(),
+  timestamp: z.number().int().nonnegative().finite(),
+  ...MessageMetadataShape,
 });
 
 // Schema for authentication request (viewer sends PIN to host)
-const AuthRequestMessageSchema = z.object({
+const AuthRequestMessageSchema = z.strictObject({
   type: z.literal('auth-request'),
-  pin: z.string(),
+  pin: z.union([z.literal(''), z.string().regex(/^\d{4,8}$/)]),
+  ...MessageMetadataShape,
 });
 
 // Schema for authentication success (host approves connection)
-const AuthSuccessMessageSchema = z.object({
+const AuthSuccessMessageSchema = z.strictObject({
   type: z.literal('auth-success'),
+  ...MessageMetadataShape,
 });
 
 // Schema for authentication failure (host rejects connection)
-const AuthFailureMessageSchema = z.object({
+const AuthFailureMessageSchema = z.strictObject({
   type: z.literal('auth-failure'),
-  reason: z.string(),
+  reason: z.string().min(1).max(200),
+  ...MessageMetadataShape,
 });
 
-const BoggleBoardSchema = z.object({
-  grid: z.array(z.array(z.string())),
-  size: z.number().int().positive(),
+const BoggleTileSchema = z.union([z.literal('Qu'), z.string().regex(/^[A-Z]$/)]);
+const BoggleBoardSchema = z.strictObject({
+  grid: z.array(z.array(BoggleTileSchema).length(4)).length(4),
+  size: z.literal(4),
 });
 
-const BoggleMultiplayerStateSchema = z.object({
+const BoggleMultiplayerStateSchema = z.strictObject({
   board: BoggleBoardSchema,
-  foundWords: z.array(z.string()),
-  score: z.number().nonnegative(),
+  foundWords: z.array(BoggleWordSchema).max(5_000),
+  score: z.number().int().nonnegative().max(1_000_000),
   gameOver: z.boolean(),
-  timeRemaining: z.number().int().nonnegative(),
+  timeRemaining: z.number().int().nonnegative().max(86_400),
   timedMode: z.boolean(),
 });
 
-const BoggleStateMessageSchema = z.object({
+const BoggleStateMessageSchema = z.strictObject({
   type: z.literal('boggle-state'),
+  revision: z.number().int().nonnegative().safe(),
   state: BoggleMultiplayerStateSchema,
+  ...MessageMetadataShape,
 });
 
-const BoggleWordMessageSchema = z.object({
+const BoggleWordMessageSchema = z.strictObject({
   type: z.literal('boggle-word'),
-  word: z.string().min(3).max(32),
+  word: BoggleWordSchema,
+  ...MessageMetadataShape,
+});
+
+const BoggleWordResultMessageSchema = z.strictObject({
+  type: z.literal('boggle-word-result'),
+  word: BoggleWordSchema,
+  accepted: z.boolean(),
+  reason: z.string().min(1).max(100).optional(),
+  ...MessageMetadataShape,
 });
 
 // Union schema for all peer messages
@@ -427,6 +464,7 @@ export const PeerMessageSchema = z.discriminatedUnion('type', [
   AuthFailureMessageSchema,
   BoggleStateMessageSchema,
   BoggleWordMessageSchema,
+  BoggleWordResultMessageSchema,
 ]);
 
 // Inferred PeerMessage type from schema
@@ -463,7 +501,7 @@ export interface GameStatistics {
   // Guess distribution (index = number of guesses - 1, so index 0 = won in 1 guess)
   guessDistribution: [number, number, number, number, number, number];
 
-  // Last game date (ISO string) for streak tracking
+  // Last completed game date (local YYYY-MM-DD string)
   lastGameDate: string | null;
 
   // Game mode breakdown
@@ -486,82 +524,11 @@ export const DEFAULT_STATISTICS: GameStatistics = {
 // LocalStorage key for statistics
 export const STATS_STORAGE_KEY = 'wordle-statistics';
 
-// Schema for validating stored statistics
-const GuessDistributionSchema = z.tuple([
-  z.number(),
-  z.number(),
-  z.number(),
-  z.number(),
-  z.number(),
-  z.number(),
-]);
-
-const GameStatisticsSchema = z.object({
-  gamesPlayed: z.number().min(0),
-  gamesWon: z.number().min(0),
-  currentStreak: z.number().min(0),
-  maxStreak: z.number().min(0),
-  guessDistribution: GuessDistributionSchema,
-  lastGameDate: z.string().nullable(),
-  soloGamesPlayed: z.number().min(0),
-  multiplayerGamesPlayed: z.number().min(0),
-});
-
-// Load statistics from localStorage with validation
-export const loadStatistics = (): GameStatistics => {
-  try {
-    const stored = localStorage.getItem(STATS_STORAGE_KEY);
-    if (!stored) {
-      return { ...DEFAULT_STATISTICS };
-    }
-    const parsed = JSON.parse(stored) as unknown;
-    const result = GameStatisticsSchema.safeParse(parsed);
-    if (result.success) {
-      return result.data;
-    }
-    // Invalid data, return defaults
-    return { ...DEFAULT_STATISTICS };
-  } catch {
-    // Parse error, return defaults
-    return { ...DEFAULT_STATISTICS };
-  }
-};
-
-// Save statistics to localStorage
-export const saveStatistics = (stats: GameStatistics): void => {
-  try {
-    localStorage.setItem(STATS_STORAGE_KEY, JSON.stringify(stats));
-  } catch {
-    // Storage error (e.g., quota exceeded), silently ignore
-  }
-};
-
 const getLocalDateKey = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-};
-
-const getCalendarDayNumber = (dateKey: string): number | null => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
-  if (!match) return null;
-
-  const [, year, month, day] = match;
-  if (!year || !month || !day) return null;
-  return Date.UTC(Number(year), Number(month) - 1, Number(day)) / (24 * 60 * 60 * 1000);
-};
-
-// Check if two local calendar dates are consecutive days
-const isConsecutiveDay = (lastDate: string, currentDate: string): boolean => {
-  const lastDay = getCalendarDayNumber(lastDate);
-  const currentDay = getCalendarDayNumber(currentDate);
-  return lastDay !== null && currentDay !== null && currentDay - lastDay === 1;
-};
-
-// Check if date is today
-const isToday = (dateStr: string): boolean => {
-  return dateStr === getLocalDateKey(new Date());
 };
 
 // Record a completed game
@@ -601,16 +568,9 @@ export const recordGameResult = (
     newStats.guessDistribution[distributionIndex] =
       (newStats.guessDistribution[distributionIndex] ?? 0) + 1;
 
-    // Update streak
-    if (stats.lastGameDate && isConsecutiveDay(stats.lastGameDate, today)) {
-      newStats.currentStreak = stats.currentStreak + 1;
-    } else if (stats.lastGameDate && isToday(stats.lastGameDate)) {
-      // Same day, don't change streak
-    } else {
-      // New streak starts
-      newStats.currentStreak = 1;
-    }
-
+    // This is an unlimited game, so a streak means consecutive wins rather
+    // than calendar days (unlike the original daily Wordle).
+    newStats.currentStreak = stats.currentStreak + 1;
     newStats.maxStreak = Math.max(newStats.maxStreak, newStats.currentStreak);
   } else {
     // Lost - reset current streak

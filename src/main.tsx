@@ -4,6 +4,7 @@ import './index.css'
 import { AppRouter } from './router'
 import ErrorBoundary from './components/ErrorBoundary'
 import { registerServiceWorker } from './registerServiceWorker'
+import { UpdatePrompt } from './components/UpdatePrompt'
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,6 +15,7 @@ createRoot(rootElement).render(
   <StrictMode>
     <ErrorBoundary>
       <AppRouter />
+      <UpdatePrompt />
     </ErrorBoundary>
   </StrictMode>,
 )
