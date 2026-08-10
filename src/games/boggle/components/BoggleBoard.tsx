@@ -187,8 +187,6 @@ export const BoggleBoard = memo(function BoggleBoard({
       <div
         ref={boardRef}
         className={`boggle-board${isSelecting ? ' boggle-board--selecting' : ''}`}
-        role="grid"
-        aria-label="Boggle board"
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
@@ -202,6 +200,8 @@ export const BoggleBoard = memo(function BoggleBoard({
         </div>
         <div
           className={`boggle-tiles-grid${rotationAnimation ? ` boggle-tiles-grid--rotate-${rotationAnimation}` : ''}`}
+          role="grid"
+          aria-label="Boggle board"
           onAnimationEnd={onRotationAnimationEnd}
         >
           {board.grid.map((row, rowIndex) => (

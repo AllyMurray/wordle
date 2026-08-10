@@ -67,7 +67,7 @@ class ErrorBoundary extends Component<Props, State> {
             <p className="error-message">
               {message}
             </p>
-            {this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <details className="error-details">
                 <summary>Error details</summary>
                 <pre>{this.state.error.message}</pre>

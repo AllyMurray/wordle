@@ -78,6 +78,24 @@ npm run test:e2e
 npm run build
 ```
 
+The browser suite builds and serves the optimized production artifact before
+running, including an offline PWA regression. The standalone build command is
+listed as an explicit final packaging check.
+
+Extended browser gates are also available:
+
+```bash
+npm run test:e2e:cross-browser  # Firefox, WebKit, and mobile profiles
+npm run test:e2e:pwa            # persistent-profile upgrade and offline checks
+npm run test:e2e:visual         # committed screenshot comparisons
+npm run test:e2e:all            # complete nightly matrix
+```
+
+The E2E stack uses a local PeerServer, so multiplayer tests never depend on the
+public signalling service. The scheduled nightly workflow runs the full matrix;
+pull requests run the faster Chromium suite, including two-client multiplayer
+and automated accessibility checks.
+
 Pull requests and deployments run the same lint, type, unit/integration, browser, and build checks in GitHub Actions. Dependabot checks npm and GitHub Actions dependencies weekly.
 
 ## Project structure

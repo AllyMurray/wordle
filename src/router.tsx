@@ -14,9 +14,33 @@ const BoggleGame = lazy(() => import('./games/boggle/BoggleGame'));
  */
 function GameLoadingFallback() {
   return (
-    <div className="game-loading">
-      <div className="loading-spinner" aria-label="Loading game..." />
+    <div className="game-loading" role="status" aria-label="Loading game">
+      <div className="loading-spinner" aria-hidden="true" />
     </div>
+  );
+}
+
+function RouteErrorFallback() {
+  return (
+    <main className="error-boundary" role="alert">
+      <div className="error-content">
+        <h1>Unable to load this game</h1>
+        <p className="error-message">
+          The game could not be opened. Check your connection or try reloading.
+        </p>
+        <div className="error-actions">
+          <button className="error-btn primary" onClick={() => window.location.reload()}>
+            Reload Page
+          </button>
+          <button
+            className="error-btn secondary"
+            onClick={() => window.location.assign(`${import.meta.env.BASE_URL}#/`)}
+          >
+            Back to Game Hub
+          </button>
+        </div>
+      </div>
+    </main>
   );
 }
 
@@ -28,6 +52,7 @@ const router = createHashRouter([
   {
     path: '/',
     element: <Dashboard />,
+    errorElement: <RouteErrorFallback />,
   },
   {
     path: '/wordle',
@@ -36,6 +61,7 @@ const router = createHashRouter([
         <WordleGame />
       </Suspense>
     ),
+    errorElement: <RouteErrorFallback />,
   },
   {
     path: '/boggle',
@@ -44,11 +70,13 @@ const router = createHashRouter([
         <BoggleGame />
       </Suspense>
     ),
+    errorElement: <RouteErrorFallback />,
   },
   {
     // Catch-all redirect to dashboard
     path: '*',
     element: <Navigate to="/" replace />,
+    errorElement: <RouteErrorFallback />,
   },
 ]);
 
