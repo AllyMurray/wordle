@@ -59,7 +59,7 @@ interface MultiplayerState {
 
   // Actions
   hostGame: (gameId: string, pin?: string) => void;
-  joinGame: (gameId: string, code: string, pin?: string) => void;
+  joinGame: (gameId: string, code: string, pin?: string) => boolean;
   leaveSession: () => void;
   sendGameState: (state: GameState) => void;
   sendSuggestion: (word: string) => void;
@@ -733,7 +733,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
     };
 
     // Join an existing game session
-    const joinGame = (gameId: string, code: string, pin?: string): void => {
+    const joinGame = (gameId: string, code: string, pin?: string): boolean => {
       // Check rate limiting for connection attempts
       const rateCheck = checkConnectionRateLimit(rateLimitState);
       if (!rateCheck.allowed) {
@@ -742,7 +742,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           connectionStatus: 'error',
           errorMessage: `Too many connection attempts. Please wait ${retrySeconds} seconds.`,
         });
-        return;
+        return false;
       }
 
       const sanitizedCode = sanitizeSessionCode(code);
@@ -751,7 +751,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           connectionStatus: 'error',
           errorMessage: 'Invalid session code. Please check and try again.',
         });
-        return;
+        return false;
       }
 
       const sanitizedPin = pin ? sanitizeSessionPin(pin) : '';
@@ -760,7 +760,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
           connectionStatus: 'error',
           errorMessage: 'Invalid PIN format. PIN must be 4-8 digits.',
         });
-        return;
+        return false;
       }
 
       // Record this connection attempt
@@ -769,6 +769,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
       cleanup(internal);
       set({ sessionCode: sanitizedCode, sessionPin: sanitizedPin, currentGameId: gameId });
       attemptConnection(gameId, sanitizedCode, false, sanitizedPin);
+      return true;
     };
 
     return {

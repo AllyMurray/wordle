@@ -23,9 +23,12 @@ const Lobby = memo(({ gameName, gameDescription, onHost, onJoin, onPlaySolo, onB
 
   const handleJoin = (): void => {
     const sanitizedCode = sanitizeSessionCode(joinCode);
-    if (isValidSessionCode(sanitizedCode)) {
+    const sanitizedPin = sanitizeSessionPin(joinPin);
+    if (
+      isValidSessionCode(sanitizedCode) &&
+      (sanitizedPin === '' || isValidSessionPin(sanitizedPin))
+    ) {
       // Pass PIN if provided (empty string means no PIN)
-      const sanitizedPin = sanitizeSessionPin(joinPin);
       onJoin(sanitizedCode, sanitizedPin || undefined);
     }
   };
@@ -66,6 +69,7 @@ const Lobby = memo(({ gameName, gameDescription, onHost, onJoin, onPlaySolo, onB
   };
 
   const isHostPinValid = hostPin === '' || isValidSessionPin(hostPin);
+  const isJoinPinValid = joinPin === '' || isValidSessionPin(joinPin);
 
   return (
     <div className="lobby" role="main" aria-label={`${gameName} game lobby`}>
@@ -209,13 +213,20 @@ const Lobby = memo(({ gameName, gameDescription, onHost, onJoin, onPlaySolo, onB
                 aria-describedby="join-pin-hint"
               />
               <span id="join-pin-hint" className="sr-only">
-                {joinPin.length > 0 ? `${joinPin.length} digits entered` : 'Leave empty if no PIN is required'}
+                {joinPin.length > 0
+                  ? `${joinPin.length} digits entered. ${isJoinPinValid ? 'Valid PIN.' : `PIN must be ${GAME_CONFIG.SESSION_PIN_MIN_LENGTH}-${GAME_CONFIG.SESSION_PIN_MAX_LENGTH} digits.`}`
+                  : 'Leave empty if no PIN is required'}
               </span>
+              {joinPin.length > 0 && !isJoinPinValid && (
+                <span className="pin-hint">
+                  PIN must be {GAME_CONFIG.SESSION_PIN_MIN_LENGTH}-{GAME_CONFIG.SESSION_PIN_MAX_LENGTH} digits
+                </span>
+              )}
               <div className="join-actions">
                 <button
                   className="lobby-btn join-confirm"
                   onClick={handleJoin}
-                  disabled={!isValidSessionCode(joinCode)}
+                  disabled={!isValidSessionCode(joinCode) || !isJoinPinValid}
                   aria-label="Confirm and join game"
                 >
                   Join

@@ -414,8 +414,9 @@ export default function BoggleGame() {
 
   const handleJoin = useCallback(
     (code: string, pin?: string) => {
+      if (!joinGame('boggle', code, pin)) return;
+
       setLoadingError('');
-      joinGame('boggle', code, pin);
       setLocalGameMode('multiplayer');
       setGamePhase('loading');
     },
