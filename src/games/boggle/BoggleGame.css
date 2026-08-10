@@ -225,7 +225,6 @@
 .stats-bar__len-label {
   font-size: var(--font-size-xs);
   text-transform: uppercase;
-  opacity: 0.7;
 }
 
 .stats-bar__len strong {
@@ -442,7 +441,7 @@
 
 .share-btn.whatsapp {
   background-color: var(--color-whatsapp);
-  color: white;
+  color: var(--color-on-present);
 }
 
 .share-btn.whatsapp:hover {

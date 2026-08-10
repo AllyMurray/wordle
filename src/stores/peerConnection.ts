@@ -10,7 +10,7 @@
  * - User clicks "Join Game" (joinGame action)
  */
 
-import type { DataConnection } from 'peerjs';
+import type { DataConnection, PeerOptions } from 'peerjs';
 import type {
   PeerMessage,
   GameState,
@@ -44,6 +44,28 @@ export const loadPeerJS = async (): Promise<typeof import('peerjs').default> => 
   const module = await import('peerjs');
   PeerClass = module.default;
   return PeerClass;
+};
+
+/**
+ * Resolve PeerJS runtime options. Production defaults to PeerJS Cloud, while
+ * tests and self-hosted deployments can provide a signalling server without
+ * changing application code.
+ */
+export const getPeerOptions = (): PeerOptions => {
+  const options: PeerOptions = { debug: GAME_CONFIG.PEER_DEBUG_LEVEL };
+  const host = import.meta.env.VITE_PEER_HOST?.trim();
+  if (!host) return options;
+
+  options.host = host;
+  options.path = import.meta.env.VITE_PEER_PATH?.trim() || '/';
+  options.secure = import.meta.env.VITE_PEER_SECURE !== 'false';
+
+  const configuredPort = Number(import.meta.env.VITE_PEER_PORT);
+  if (Number.isInteger(configuredPort) && configuredPort > 0 && configuredPort <= 65_535) {
+    options.port = configuredPort;
+  }
+
+  return options;
 };
 
 // Generate a unique message ID for acknowledgment tracking

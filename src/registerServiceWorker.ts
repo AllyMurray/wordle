@@ -33,6 +33,10 @@ export function registerServiceWorker(): void {
       navigator.serviceWorker
         .register(`${BASE_PATH}sw.js`, { scope: BASE_PATH })
         .then((registration) => {
+          // Some automation environments deliberately block service workers and
+          // resolve registration without a value. Treat that as unsupported.
+          if (!registration) return;
+
           if (registration.waiting && navigator.serviceWorker.controller) {
             announceUpdate(registration);
           }

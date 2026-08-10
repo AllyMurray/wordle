@@ -22,6 +22,7 @@ import type { DataConnection, InternalConnectionState, RateLimitState } from './
 import {
   createInternalState,
   loadPeerJS,
+  getPeerOptions,
   generateSessionCode,
   cleanup,
   clearPendingMessages,
@@ -200,7 +201,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
           let peer: InstanceType<typeof Peer>;
           try {
-            peer = new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
+            peer = new Peer(peerId, getPeerOptions());
           } catch (err) {
             clearConnectionDeadline(internal);
             console.error('Error creating peer:', err);
@@ -478,7 +479,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
           let peer: InstanceType<typeof Peer>;
           try {
-            peer = new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
+            peer = new Peer(peerId, getPeerOptions());
           } catch (err) {
             clearConnectionDeadline(internal);
             console.error('Error creating peer:', err);
@@ -530,6 +531,8 @@ export const useMultiplayerStore = create<MultiplayerState>()(
               });
               return;
             }
+
+            let authenticationRejected = false;
 
             conn.on('open', () => {
               if (internal.connectionGeneration !== connectionGeneration) return;
@@ -590,6 +593,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
               if (message.type === 'auth-failure') {
                 clearConnectionDeadline(internal);
+                authenticationRejected = true;
                 internal.isAuthenticated = false;
                 internal.isReconnecting = false;
                 internal.reconnectAttempts = NETWORK_CONFIG.MAX_RECONNECT_ATTEMPTS;
@@ -661,7 +665,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             conn.on('close', () => {
               if (internal.connectionGeneration !== connectionGeneration) return;
               stopHeartbeat(internal);
-              if (!internal.isReconnecting) {
+              if (!authenticationRejected && !internal.isReconnecting) {
                 onHeartbeatTimeout();
               }
             });
@@ -669,7 +673,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
             conn.on('error', () => {
               if (internal.connectionGeneration !== connectionGeneration) return;
               stopHeartbeat(internal);
-              if (!internal.isReconnecting) {
+              if (!authenticationRejected && !internal.isReconnecting) {
                 onHeartbeatTimeout();
               }
             });
@@ -961,7 +965,7 @@ export const useMultiplayerStore = create<MultiplayerState>()(
 
             let peer: InstanceType<typeof Peer>;
             try {
-              peer = new Peer(peerId, { debug: GAME_CONFIG.PEER_DEBUG_LEVEL });
+              peer = new Peer(peerId, getPeerOptions());
             } catch (err) {
               clearConnectionDeadline(internal);
               console.error('Error creating peer during restore:', err);

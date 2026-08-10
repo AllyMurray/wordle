@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // Generated directories may be created or removed while other quality gates
+  // run. Excluding them keeps lint deterministic and focused on source files.
+  globalIgnores(['dist', 'coverage', 'playwright-report', 'test-results']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

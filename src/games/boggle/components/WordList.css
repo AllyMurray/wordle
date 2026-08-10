@@ -25,7 +25,6 @@
 .word-list--empty .hint {
   font-size: var(--font-size-sm);
   margin-top: var(--space-2);
-  opacity: 0.8;
 }
 
 .word-list__header {

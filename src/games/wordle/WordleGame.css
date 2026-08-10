@@ -129,7 +129,7 @@
 
 .share-btn.whatsapp {
   background-color: var(--color-whatsapp);
-  color: white;
+  color: var(--color-on-present);
 }
 
 .share-btn.whatsapp:hover {

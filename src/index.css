@@ -56,9 +56,9 @@
      ============================================ */
 
   /* Correct - Warm Coral (celebratory, energetic) */
-  --color-correct: #E85A50;
-  --color-correct-hover: #D64D43;
-  --color-correct-glow: rgba(232, 90, 80, 0.25);
+  --color-correct: #C24138;
+  --color-correct-hover: #A9342F;
+  --color-correct-glow: rgba(194, 65, 56, 0.25);
 
   /* Present/Partial - Golden Amber (luxurious, warm) */
   --color-present: #D4A853;
@@ -67,7 +67,7 @@
   --color-on-present: #0B0F14;
 
   /* Absent - Contextual (changes with theme) */
-  --color-error: #E85A50;
+  --color-error: #C24138;
 
   /* Wordle feedback - separate from the app's coral/amber accent palette */
   --wordle-correct: #3D8257;
@@ -144,8 +144,8 @@
 
   /* Text Colors */
   --color-text-primary: #1E293B;
-  --color-text-secondary: #64748B;
-  --color-text-muted: #94A3B8;
+  --color-text-secondary: #475569;
+  --color-text-muted: #475569;
 
   /* Border Colors */
   --color-border-primary: rgba(0, 0, 0, 0.08);
@@ -200,6 +200,78 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   transition: background-color var(--transition-slow), color var(--transition-slow);
+}
+
+/* Error boundaries and route failures */
+.error-boundary {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--space-6);
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.error-content,
+.error-boundary-compact {
+  width: min(100%, 34rem);
+  padding: var(--space-8);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-secondary);
+  text-align: center;
+}
+
+.error-content h1,
+.error-message {
+  margin-top: 0;
+}
+
+.error-message,
+.error-message-compact {
+  color: var(--color-text-secondary);
+}
+
+.error-details {
+  margin: var(--space-5) 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.error-btn,
+.error-btn-compact {
+  min-height: 44px;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--radius-md);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.error-btn.primary,
+.error-btn-compact {
+  border-color: var(--color-correct);
+  background: var(--color-correct);
+  color: white;
+}
+
+.error-btn.secondary {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.error-btn:hover,
+.error-btn-compact:hover {
+  filter: brightness(1.08);
 }
 
 /* Selection styling */

@@ -16,7 +16,9 @@ export function Dashboard() {
       <main className="game-grid">
         {games.map((game) => (
           <Link key={game.id} to={game.route} className="game-card">
-            <span className="game-icon">{game.icon}</span>
+            <span className="game-icon" aria-hidden="true">
+              {game.icon}
+            </span>
             <h2 className="game-name">{game.name}</h2>
             <p className="game-description">{game.description}</p>
             <div className="game-badges">
