@@ -342,7 +342,12 @@ export default function BoggleGame() {
       return;
     }
 
-    submitWord();
+    const result = submitWord();
+    setWordFeedback({
+      word: result.word || currentWord,
+      accepted: result.success,
+      ...(result.reason ? { reason: result.reason } : {}),
+    });
   }, [isViewer, currentWord, sendBoggleWord, clearSelection, submitWord]);
 
   // Rotation animation state
